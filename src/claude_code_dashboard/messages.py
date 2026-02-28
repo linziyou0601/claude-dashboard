@@ -122,7 +122,7 @@ EN = Messages(
     token_cost_rate="Cost Rate",
     token_reset_in="Reset In",
     token_predictions="Predictions",
-    token_exhaust="Token exhaust",
+    token_exhaust="Tokens exhausted",
     token_limit_resets="Limit resets",
     token_cost_exceeded="Cost limit exceeded!",
     token_tokens_exceeded="Token limit exceeded!",
@@ -167,7 +167,7 @@ ZH_TW = Messages(
     # Token 面板
     token_panel_title="Token 用量",
     token_panel_no_session="沒有活躍的工作階段",
-    token_panel_cumulative="累計：{tokens} tokens · ${cost}",
+    token_panel_cumulative="累計：{tokens} Tokens · ${cost}",
     token_cost="費用",
     token_tokens="Token 數",
     token_messages="訊息數",
@@ -221,7 +221,7 @@ ZH_CN = Messages(
     # Token 面板
     token_panel_title="Token 用量",
     token_panel_no_session="没有活跃的工作会话",
-    token_panel_cumulative="累计：{tokens} tokens · ${cost}",
+    token_panel_cumulative="累计：{tokens} Tokens · ${cost}",
     token_cost="费用",
     token_tokens="Token 数",
     token_messages="消息数",
@@ -258,7 +258,7 @@ ZH_CN = Messages(
     tool_sub_agent="子代理：{}",
     tool_browsing_web="浏览网页",
     tool_fetching_web="获取网页",
-    tool_updating_todos="更新待办",
+    tool_updating_todos="更新待办事项",
     # 时间距离
     time_seconds_ago="{}秒前",
     time_minutes_ago="{}分钟前",
@@ -275,7 +275,7 @@ JA = Messages(
     # Token パネル
     token_panel_title="トークン使用量",
     token_panel_no_session="アクティブなセッションなし",
-    token_panel_cumulative="累計：{tokens} tokens · ${cost}",
+    token_panel_cumulative="累計：{tokens} トークン · ${cost}",
     token_cost="コスト",
     token_tokens="トークン数",
     token_messages="メッセージ数",
@@ -329,7 +329,7 @@ KO = Messages(
     # Token 패널
     token_panel_title="토큰 사용량",
     token_panel_no_session="활성 세션 없음",
-    token_panel_cumulative="누적: {tokens} tokens · ${cost}",
+    token_panel_cumulative="누적: {tokens} 토큰 · ${cost}",
     token_cost="비용",
     token_tokens="토큰 수",
     token_messages="메시지 수",
@@ -372,7 +372,7 @@ KO = Messages(
     time_minutes_ago="{}분 전",
     time_hours_ago="{}시간 전",
     # App 푸터
-    app_footer="Ctrl+C 종료 | 데이터 갱신 간격: {}초",
+    app_footer="Ctrl+C로 종료 | 데이터 갱신 간격: {}초",
 )
 
 
