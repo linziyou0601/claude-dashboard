@@ -27,9 +27,9 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from claude_dashboard.agent_parser import AgentState, parse_agent_state
-from claude_dashboard.agent_scanner import SessionInfo
-from claude_dashboard.constants import (
+from claude_code_dashboard.agent_parser import AgentState, parse_agent_state
+from claude_code_dashboard.agent_scanner import SessionInfo
+from claude_code_dashboard.constants import (
     ACTIVE_THRESHOLD_S,
     AGENT_CARD_HEIGHT,
     AGENT_CARD_MIN_WIDTH,
@@ -38,7 +38,7 @@ from claude_dashboard.constants import (
     STATE_DISPLAY,
     STATE_IDLE,
 )
-from claude_dashboard.sprites import render_sprite
+from claude_code_dashboard.sprites import render_sprite
 
 
 # ===================================================================

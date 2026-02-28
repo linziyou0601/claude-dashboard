@@ -31,7 +31,7 @@
 ## 開發環境
 
 ```bash
-cd claude-dashboard
+cd claude-code-dashboard
 uv sync                         # 建立 .venv 並安裝相依套件
 uv run claude-dash --plan max5  # 直接執行
 ```
@@ -111,7 +111,7 @@ Repository → Settings → **Rules** → Rulesets → New ruleset。
 3. 到 GitHub Actions 頁面 → "Publish to PyPI" → **Run workflow** → 選擇 `testpypi`
 4. 驗證安裝：
    ```bash
-   pip install -i https://test.pypi.org/simple/ claude-dashboard==0.2.0
+   pip install -i https://test.pypi.org/simple/ claude-code-dashboard==0.2.0
    ```
 
 ### 正式發佈（PyPI）

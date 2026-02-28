@@ -107,9 +107,9 @@ jobs:
           if [ "${TARGET}" = "testpypi" ]; then
             echo "### ✅ Published v${V} to TestPyPI" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Install: \`pip install -i https://test.pypi.org/simple/ claude-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
+            echo "Install: \`pip install -i https://test.pypi.org/simple/ claude-code-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
           else
             echo "### ✅ Published v${V} to PyPI" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Install: \`pip install claude-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
+            echo "Install: \`pip install claude-code-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
           fi

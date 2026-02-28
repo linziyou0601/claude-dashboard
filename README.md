@@ -1,20 +1,11 @@
-# Claude Dashboard
+# Claude Code Dashboard
 
-> Claude Code 終端儀表板 — 即時監控 Token 用量與 Agent 工作狀態
-
-![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
-![License](https://img.shields.io/badge/License-MIT-green)
-
-<br>
-
-## 概覽
-
-Claude Dashboard 是一個終端介面（TUI）工具，整合兩大功能於同一畫面：
+Claude Code Dashboard 是一個終端介面（TUI）工具，整合兩大功能於同一畫面：
 
 1. **Token 用量面板** — 直接延用 [claude-monitor (ccm)](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) 的即時用量介面，顯示費用、Token 消耗量、燃燒率、預測等
 2. **Agent 狀態面板** — 受 [Pixel Agents](https://github.com/pablodelucca/pixel-agents) 啟發，以像素精靈動畫顯示每個 Claude Code 工作階段的即時狀態
 
-![Claude Dashboard](./claude-dash-demo.gif)
+![Claude Code Dashboard](./claude-dash-demo.gif)
 
 <br>
 
@@ -32,13 +23,13 @@ Claude Dashboard 是一個終端介面（TUI）工具，整合兩大功能於同
 ## 專案架構
 
 ```
-claude-dashboard/
+claude-code-dashboard/
 ├── pyproject.toml
 ├── README.md
 ├── LICENSE
 ├── .gitignore
 └── src/
-    └── claude_dashboard/
+    └── claude_code_dashboard/
         ├── __init__.py
         ├── __main__.py
         ├── cli.py                    # CLI 引數解析（argparse）
@@ -128,48 +119,70 @@ flowchart TD
 
 ### 方法一：uv tool install（推薦）
 
-將 `claude-dashboard` 安裝為全域命令列工具，自動建立隔離的虛擬環境：
+將 `claude-code-dashboard` 安裝為全域命令列工具，自動建立隔離的虛擬環境
+
+從 PyPI 安裝（推薦）：
 
 ```bash
-cd claude-dashboard
+uv tool install claude-code-dashboard
+```
+
+或從本機原始碼安裝：
+
+```bash
+cd claude-code-dashboard
 uv tool install .
 ```
 
-安裝完成後，在任何目錄都可直接執行：
+安裝完成後，在任何目錄都可直接執行（全名或縮寫皆可）：
 
 ```bash
 claude-dash --plan max5
+# 或
+ccd --plan max5
 ```
 
 更新到最新版：
 
 ```bash
-uv tool upgrade claude-dashboard
+uv tool upgrade claude-code-dashboard
 ```
 
 ### 方法二：uv run（開發用途）
 
-不安裝，直接在專案目錄中執行。uv 會自動建立 `.venv` 並安裝相依套件：
+不安裝，直接在專案目錄中執行。uv 會自動建立 `.venv` 並安裝相依套件
 
 ```bash
-cd claude-dashboard
+cd claude-code-dashboard
 uv run claude-dash --plan max5
+# 或 uv run ccd --plan max5
 ```
 
 ### 方法三：pip install（傳統方式）
 
 ```bash
-cd claude-dashboard
+cd claude-code-dashboard
 python -m venv .venv && source .venv/bin/activate
 pip install .
 claude-dash --plan max5
+# 或 ccd --plan max5
 ```
 
 <br>
 
 ## 使用方式
 
+**名稱對照**：本專案使用三個名稱，語境不同請對應使用。
+
+| 語境 | 名稱 | 範例 |
+|------|------|------|
+| PyPI 套件 / 專案目錄 | **claude-code-dashboard** | `pip install claude-code-dashboard`、`cd claude-code-dashboard` |
+| 指令（全名） | **claude-dash** | `claude-dash --plan max5` |
+| 指令（縮寫） | **ccd** | `ccd --plan max5` |
+
 ### 基本使用
+
+以下範例以 `claude-dash` 為例，亦可改用縮寫 `ccd`：
 
 ```bash
 # 顯示所有面板（Token + Agent），使用 max5 方案
@@ -254,3 +267,7 @@ claude-dash --timezone America/New_York
 ## 授權條款
 
 本專案採用 [MIT License](LICENSE) 授權。
+
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge)
+![PyPI](https://img.shields.io/pypi/v/claude-code-dashboard?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)

@@ -14,8 +14,8 @@ from __future__ import annotations
 import argparse
 import sys
 
-from claude_dashboard import __version__
-from claude_dashboard.constants import (
+from claude_code_dashboard import __version__
+from claude_code_dashboard.constants import (
     DEFAULT_IDLE_TIMEOUT_MIN,
     DEFAULT_PLAN,
     DEFAULT_REFRESH_S,
@@ -95,7 +95,7 @@ def main(argv: list[str] | None = None) -> None:
     args = parse_args(argv)
 
     # 延遲載入 app 模組，避免在解析引數失敗時做不必要的初始化
-    from claude_dashboard.app import run
+    from claude_code_dashboard.app import run
 
     try:
         run(args)

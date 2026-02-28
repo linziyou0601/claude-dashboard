@@ -28,7 +28,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from claude_dashboard.constants import (
+from claude_code_dashboard.constants import (
     BASH_CMD_MAX_LEN,
     IDLE_THRESHOLD_S,
     INPUT_WAIT_TIMER_S,

@@ -34,10 +34,10 @@ from rich.console import Console, Group
 from rich.live import Live
 from rich.text import Text
 
-from claude_dashboard.agent_panel import create_agent_display
-from claude_dashboard.agent_scanner import SessionInfo, scan_sessions
-from claude_dashboard.constants import DISPLAY_REFRESH_HZ, SPRITE_FRAME_INTERVAL_S
-from claude_dashboard.token_panel import create_token_display
+from claude_code_dashboard.agent_panel import create_agent_display
+from claude_code_dashboard.agent_scanner import SessionInfo, scan_sessions
+from claude_code_dashboard.constants import DISPLAY_REFRESH_HZ, SPRITE_FRAME_INTERVAL_S
+from claude_code_dashboard.token_panel import create_token_display
 
 
 def _get_themed_console() -> Console:

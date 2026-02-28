@@ -19,7 +19,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from claude_dashboard.constants import ACTIVE_THRESHOLD_S
+from claude_code_dashboard.constants import ACTIVE_THRESHOLD_S
 
 
 @dataclass
