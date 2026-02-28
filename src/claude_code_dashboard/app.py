@@ -30,7 +30,7 @@ from __future__ import annotations
 import argparse
 import time
 
-from rich.console import Console, Group
+from rich.console import Console, Group, RenderableType
 from rich.live import Live
 from rich.text import Text
 
@@ -104,14 +104,19 @@ def run(args: argparse.Namespace) -> None:
             needs_data_refresh: bool = (now - last_data_refresh) >= args.refresh
 
             # 組合所有可渲染元件（由上到下）
-            renderables: list = []
+            renderables: list[RenderableType] = []
 
-            # ── Token 面板 ─────────────────────────────
+            # -- Token 面板 -----------------------------------------
             if args.view in ("all", "tokens"):
-                token_display = create_token_display(args.plan, args.timezone)
+                token_display = create_token_display(
+                    args.plan,
+                    args.timezone,
+                    theme=args.token_theme,
+                    time_format=args.time_format,
+                )
                 renderables.append(token_display)
 
-            # ── Agent 面板 ─────────────────────────────
+            # -- Agent 面板 -----------------------------------------
             if args.view in ("all", "agents"):
                 if needs_data_refresh:
                     sessions = scan_sessions(
@@ -129,7 +134,7 @@ def run(args: argparse.Namespace) -> None:
                 )
                 renderables.append(agent_display)
 
-            # ── 頁尾提示 ──────────────────────────────
+            # -- 頁尾提示 -------------------------------------------
             renderables.append(Text(
                 f"  Ctrl+C to exit | Data refresh: {args.refresh}s",
                 style="dim",

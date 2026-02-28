@@ -42,10 +42,9 @@ from claude_code_dashboard.constants import (
 )
 
 
-# ===================================================================
+# ==========================================================
 # 資料模型
-# ===================================================================
-
+# ==========================================================
 @dataclass
 class AgentState:
     """單一 Agent 的目前狀態資料。
@@ -68,10 +67,9 @@ class AgentState:
     model: str = ""
 
 
-# ===================================================================
+# ==========================================================
 # 常數
-# ===================================================================
-
+# ==========================================================
 # 不需要使用者授權的工具（自動核准），這些工具在 Claude Code 中
 # 被標記為安全工具，執行時不會彈出確認視窗
 _EXEMPT_TOOLS: set[str] = {"Read", "Glob", "Grep", "TodoWrite", "WebSearch", "WebFetch"}
@@ -81,10 +79,9 @@ _EXEMPT_TOOLS: set[str] = {"Read", "Glob", "Grep", "TodoWrite", "WebSearch", "We
 _TAIL_BYTES: int = 32768
 
 
-# ===================================================================
+# ==========================================================
 # 主要解析函式
-# ===================================================================
-
+# ==========================================================
 def parse_agent_state(jsonl_path: Path) -> AgentState:
     """解析 JSONL 紀錄檔並回傳 Agent 的目前狀態。
 
@@ -134,9 +131,9 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     if not lines:
         return AgentState(state=STATE_IDLE, last_update=mtime)
 
-    # -----------------------------------------------------------------
+    # ----------------------------------------------------------
     # 從最新到最舊逐行解析，追蹤工具呼叫狀態
-    # -----------------------------------------------------------------
+    # ----------------------------------------------------------
     active_tool_ids: set[str] = set()      # 進行中（尚無結果）的工具呼叫 ID
     completed_tool_ids: set[str] = set()   # 已回傳結果的工具呼叫 ID
     last_assistant_has_text: bool = False   # 最後一則助手訊息是否包含純文字
@@ -153,7 +150,7 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
 
         msg_type: str = obj.get("type", "")
 
-        # ----- user 類型訊息 → 檢查是否有 tool_result（代表工具已完成）-----
+        # -- user 類型訊息 → 檢查是否有 tool_result（代表工具已完成） ----------------
         if msg_type == "user":
             message: dict = obj.get("message", {})
             content = message.get("content", [])
@@ -163,7 +160,7 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
                         # tool_use_id 是 Claude 在發起工具呼叫時產生的唯一 ID
                         completed_tool_ids.add(block.get("tool_use_id", ""))
 
-        # ----- assistant 類型訊息 → 檢查 tool_use 或 text -----
+        # -- assistant 類型訊息 → 檢查 tool_use 或 text -------------------
         elif msg_type == "assistant":
             message = obj.get("message", {})
             content = message.get("content", [])
@@ -208,9 +205,9 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
             if active_tool_ids or last_assistant_has_text:
                 break
 
-    # -----------------------------------------------------------------
+    # ----------------------------------------------------------
     # 根據解析結果決定狀態
-    # -----------------------------------------------------------------
+    # ----------------------------------------------------------
     now: float = time.time()
     time_since_update: float = now - mtime
 
@@ -270,10 +267,9 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     )
 
 
-# ===================================================================
+# ==========================================================
 # 內部輔助函式
-# ===================================================================
-
+# ==========================================================
 def _read_tail_lines(path: Path, file_size: int) -> list[str]:
     """讀取檔案尾端的 N 個位元組並回傳完整的文字行。
 
@@ -331,7 +327,7 @@ def _format_tool_status(tool_name: str, tool_input: dict) -> str:
     if not template:
         return tool_name
 
-    # ----- 檔案操作類工具：顯示檔名 -----
+    # -- 檔案操作類工具：顯示檔名 ------------------------------------------
     if tool_name in ("Read", "Edit", "Write"):
         path: str = tool_input.get("file_path", "") or tool_input.get("path", "")
         if path:
@@ -339,24 +335,24 @@ def _format_tool_status(tool_name: str, tool_input: dict) -> str:
             return template.format(name)
         return template.format("...")
 
-    # ----- Bash 工具：顯示指令（截斷過長的部分） -----
+    # -- Bash 工具：顯示指令（截斷過長的部分） ---------------------------------
     if tool_name == "Bash":
         cmd: str = tool_input.get("command", "")
         if len(cmd) > BASH_CMD_MAX_LEN:
             cmd = cmd[:BASH_CMD_MAX_LEN] + "..."
         return template.format(cmd)
 
-    # ----- 搜尋類工具：顯示搜尋模式 -----
+    # -- 搜尋類工具：顯示搜尋模式 ------------------------------------------
     if tool_name in ("Grep", "Glob"):
         pattern: str = tool_input.get("pattern", "")
         return template.format(pattern or "...")
 
-    # ----- 子代理工具：顯示任務描述 -----
+    # -- 子代理工具：顯示任務描述 ------------------------------------------
     if tool_name == "Task":
         desc: str = tool_input.get("description", "")
         return template.format(desc or "task")
 
-    # ----- 其他有佔位符的範本 -----
+    # -- 其他有佔位符的範本 ---------------------------------------------
     if "{}" in template:
         return template.format("")
     return template

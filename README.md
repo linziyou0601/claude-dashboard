@@ -5,7 +5,7 @@ Claude Code Dashboard 是一個終端介面（TUI）工具，整合兩大功能�
 1. **Token 用量面板** — 直接延用 [claude-monitor (ccm)](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) 的即時用量介面，顯示費用、Token 消耗量、燃燒率、預測等
 2. **Agent 狀態面板** — 受 [Pixel Agents](https://github.com/pablodelucca/pixel-agents) 啟發，以像素精靈動畫顯示每個 Claude Code 工作階段的即時狀態
 
-![Claude Code Dashboard](./claude-dash-demo.gif)
+![Claude Code Dashboard](https://github.com/linziyou0601/claude-code-dashboard/raw/main/claude-dash-demo.gif)
 
 <br>
 
@@ -15,7 +15,8 @@ Claude Code Dashboard 是一個終端介面（TUI）工具，整合兩大功能�
 - **像素精靈動畫** — 5 種狀態各有兩幀動畫，使用 Unicode Braille 字元渲染（無需圖片協議支援）
 - **多工作階段偵測** — 同一專案可同時顯示多個 Agent（自動編號 #1, #2, ...）
 - **檔案式偵測** — 以 JSONL mtime 判斷工作階段存活，支援 macOS / Linux / Windows
-- **ccm 原生整合** — Token 面板直接呼叫 ccm 的 `DisplayController`，顯示效果完全一致
+- **雙主題切換** — Token 面板支援預設佈局與 ccm 原版介面兩種主題
+- **12 / 24 小時制** — 時間顯示格式可透過 `--time-format` 切換
 - **跨終端相容** — 純 Unicode 文字輸出，VS Code 終端、iTerm2、Terminal.app 皆可使用
 
 <br>
@@ -35,7 +36,7 @@ claude-code-dashboard/
         ├── cli.py                    # CLI 引數解析（argparse）
         ├── constants.py              # 全域常數（門檻值、預設值、顯示設定）
         ├── app.py                    # 主迴圈（Rich Live 即時刷新）
-        ├── token_panel.py            # Token 面板（封裝 ccm DisplayController）
+        ├── token_panel.py            # Token 面板（預設佈局 + ccm 原版主題）
         ├── agent_scanner.py          # 工作階段掃描（JSONL mtime 偵測）
         ├── agent_parser.py           # JSONL 解析（推斷 Agent 狀態）
         ├── agent_panel.py            # Agent 面板（精靈卡片渲染）
@@ -88,7 +89,7 @@ flowchart TD
 |------|------|
 | `cli.py` | 定義 CLI 參數、進入點 |
 | `app.py` | Rich Live 主迴圈，組合所有面板 |
-| `token_panel.py` | 封裝 ccm 的 `DisplayController`，產生 Token 用量面板 |
+| `token_panel.py` | Token 用量面板（預設主題：預設進度條 + 雙欄佈局；ccm 主題：原版介面） |
 | `agent_scanner.py` | 掃描 `~/.claude/projects/` 的 JSONL 檔案，以 mtime 判斷存活 |
 | `agent_parser.py` | 讀取 JSONL 尾端 32KB，推斷工具使用狀態與 Agent 狀態 |
 | `agent_panel.py` | 將工作階段與狀態組合為 Rich Panel 卡片 |
@@ -207,6 +208,8 @@ claude-dash --view tokens
 | `--max-agents` | `0` | 最多顯示的 Agent 卡片數量（0=不限） |
 | `--show-all` | `false` | 顯示 30 分鐘內的所有工作階段 |
 | `--no-sprites` | `false` | 停用像素精靈，改用純文字模式 |
+| `--token-theme` | `default` | Token 面板主題：`default` / `ccm` |
+| `--time-format` | `24h` | 時間格式：`24h` / `12h`（上午/下午） |
 | `--version` | — | 顯示版本號 |
 
 ### 使用範例
@@ -223,6 +226,12 @@ claude-dash --max-agents 4
 
 # 使用不同時區
 claude-dash --timezone America/New_York
+
+# 切換為 ccm 原版 Token 面板主題
+claude-dash --token-theme ccm
+
+# 使用 12 小時制時間格式
+claude-dash --time-format 12h
 ```
 
 <br>
@@ -231,7 +240,10 @@ claude-dash --timezone America/New_York
 
 ### Token 面板
 
-直接匯入 ccm 的 `DisplayController.create_data_display()` 方法，該方法回傳一個 Rich `Group` 可渲染物件。這表示 Token 面板的顯示效果與 `ccm --view realtime` **完全相同**，無需重新實作任何邏輯。
+提供兩種主題（透過 `--token-theme` 切換）：
+
+- **`default`**：預設的進度條 + 響應式雙欄佈局。上半部顯示 Cost / Tokens / Messages 三列全寬進度條；下半部為左右並排的 Models 堆疊色條 + Burn Rate 與 Reset In 倒數計時 + Predictions 時間預估。窄螢幕自動轉為單欄。
+- **`ccm`**：直接匯入 ccm 的 `DisplayController.create_data_display()` 方法，顯示效果與 `ccm --view realtime` 完全相同。
 
 ### 像素精靈渲染
 

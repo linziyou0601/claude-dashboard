@@ -41,10 +41,9 @@ from claude_code_dashboard.constants import (
 from claude_code_dashboard.sprites import render_sprite
 
 
-# ===================================================================
+# ==========================================================
 # 精靈渲染尺寸（7 字元寬 × 3 行高）
-# ===================================================================
-
+# ==========================================================
 _SPRITE_DISPLAY_WIDTH: int = 9
 """精靈在卡片中佔用的欄位寬度（含左右各 1 字元留白）。"""
 
@@ -117,17 +116,17 @@ def create_agent_display(
     cards: list[Panel] = []
     active_count: int = 0
 
-    # ── 統計每個專案的工作階段數量 ─────────────────────────
+    # -- 統計每個專案的工作階段數量 -----------------------------------------
     # 用於判斷是否需要為同專案的多個工作階段加上編號（#1, #2, ...）
     project_counts: dict[str, int] = {}
     for s in display_sessions:
         project_counts[s.project_name] = project_counts.get(s.project_name, 0) + 1
 
-    # ── 計算卡片寬度 ─────────────────────────────────────
+    # -- 計算卡片寬度 ------------------------------------------------
     effective_width: int = console_width if console_width > 0 else 80
     card_width: int = _calc_card_width(len(display_sessions), effective_width)
 
-    # ── 逐一建立卡片 ─────────────────────────────────────
+    # -- 逐一建立卡片 ------------------------------------------------
     project_indices: dict[str, int] = {}  # 追蹤每個專案目前的流水編號
     for s in display_sessions:
         idx: int = project_indices.get(s.project_name, 0) + 1
@@ -213,12 +212,12 @@ def _build_agent_card(
     if is_dim:
         color = "dim"
 
-    # ── 組裝專案名稱 ────────────────────────────────────
+    # -- 組裝專案名稱 ------------------------------------------------
     name: str = session.project_name
     if index > 0:
         name += f" #{index}"  # 同專案多個工作階段時加上編號
 
-    # ── 截斷狀態文字 ────────────────────────────────────
+    # -- 截斷狀態文字 ------------------------------------------------
     # 右欄可用寬度 = 卡片寬度 - 精靈欄 - 邊框 - 留白
     max_status_len: int = card_width - _SPRITE_DISPLAY_WIDTH - 6
     status: str = state.status_text
@@ -226,8 +225,7 @@ def _build_agent_card(
         status = status[:max_status_len - 3] + "..."
 
     if not no_sprites:
-        # ── 橫向排版：精靈（左）+ 文字（右）──────────────
-
+        # -- 橫向排版：精靈（左）+ 文字（右） -------------------------------------
         # 渲染精靈圖（Rich Text 物件，3 行高 × 7 字元寬）
         sprite: Text = render_sprite(state.state, frame)
 
@@ -265,7 +263,7 @@ def _build_agent_card(
         )
 
     else:
-        # ── 純文字排版（無精靈）──────────────────────────
+        # -- 純文字排版（無精靈） --------------------------------------------
         content = Text()
         content.append(" ")
         content.append(name, style="bold" if not is_dim else "dim")

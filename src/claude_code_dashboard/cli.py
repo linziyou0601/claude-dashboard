@@ -19,7 +19,9 @@ from claude_code_dashboard.constants import (
     DEFAULT_IDLE_TIMEOUT_MIN,
     DEFAULT_PLAN,
     DEFAULT_REFRESH_S,
+    DEFAULT_TIME_FORMAT,
     DEFAULT_TIMEZONE,
+    DEFAULT_TOKEN_THEME,
     DEFAULT_VIEW,
 )
 
@@ -82,6 +84,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--no-sprites",
         action="store_true",
         help="停用像素精靈，改用純文字模式",
+    )
+    p.add_argument(
+        "--token-theme",
+        default=DEFAULT_TOKEN_THEME,
+        choices=["default", "ccm"],
+        help="Token 面板主題：default=預設介面，ccm=claude-monitor 原版介面（預設：%(default)s）",
+    )
+    p.add_argument(
+        "--time-format",
+        default=DEFAULT_TIME_FORMAT,
+        choices=["12h", "24h"],
+        help="時間顯示格式：24h=24 小時制，12h=12 小時制（上午/下午）（預設：%(default)s）",
     )
     return p.parse_args(argv)
 
