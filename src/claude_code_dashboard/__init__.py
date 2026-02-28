@@ -4,4 +4,6 @@
 提供即時的終端介面，方便同時掌握多個 Claude Code 工作階段的狀態。
 """
 
-__version__: str = "0.1.0"
+from importlib.metadata import version as _version
+
+__version__: str = _version("claude-code-dashboard")
