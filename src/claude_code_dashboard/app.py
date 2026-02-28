@@ -36,7 +36,8 @@ from rich.text import Text
 
 from claude_code_dashboard.agent_panel import create_agent_display
 from claude_code_dashboard.agent_scanner import SessionInfo, scan_sessions
-from claude_code_dashboard.constants import DISPLAY_REFRESH_HZ, SPRITE_FRAME_INTERVAL_S
+from claude_code_dashboard.constants import DISPLAY_REFRESH_HZ, SPRITE_FRAME_INTERVAL_S, set_lang
+from claude_code_dashboard.messages import Messages, get_messages
 from claude_code_dashboard.token_panel import create_token_display
 
 
@@ -83,6 +84,10 @@ def run(args: argparse.Namespace) -> None:
     Raises:
         KeyboardInterrupt: 使用者按下 Ctrl+C 時結束迴圈（由 cli.main 攔截）。
     """
+    # 設定語系（供 constants.py 的 get_tool_display / get_state_display 使用）
+    set_lang(args.lang)
+    msg: Messages = get_messages(args.lang)
+
     # 使用 ccm 的自適應主題 Console，確保 Token 面板顏色與 ccm 一致
     console: Console = _get_themed_console()
 
@@ -113,6 +118,7 @@ def run(args: argparse.Namespace) -> None:
                     args.timezone,
                     theme=args.token_theme,
                     time_format=args.time_format,
+                    msg=msg,
                 )
                 renderables.append(token_display)
 
@@ -131,12 +137,13 @@ def run(args: argparse.Namespace) -> None:
                     max_agents=args.max_agents,
                     no_sprites=args.no_sprites,
                     console_width=console.width,
+                    msg=msg,
                 )
                 renderables.append(agent_display)
 
             # -- 頁尾提示 -------------------------------------------
             renderables.append(Text(
-                f"  Ctrl+C to exit | Data refresh: {args.refresh}s",
+                f"  {msg.app_footer.format(args.refresh)}",
                 style="dim",
             ))
 

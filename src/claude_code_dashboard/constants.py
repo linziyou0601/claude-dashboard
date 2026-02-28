@@ -72,20 +72,23 @@ DEFAULT_PLAN: str = "max5"
 DEFAULT_TIMEZONE: str = "Asia/Taipei"
 """預設的 IANA 時區名稱。"""
 
+DEFAULT_VIEW: str = "all"
+"""預設的顯示模式。``all`` 表示同時顯示 Token 面板與 Agent 面板。"""
+
 DEFAULT_REFRESH_S: int = 10
 """預設的資料刷新間隔（秒）。"""
 
 DEFAULT_IDLE_TIMEOUT_MIN: int = 10
 """預設的閒置逾時時間（分鐘）。超過後 Agent 不會顯示。"""
 
-DEFAULT_VIEW: str = "all"
-"""預設的顯示模式。``all`` 表示同時顯示 Token 面板與 Agent 面板。"""
-
 DEFAULT_TOKEN_THEME: str = "default"
 """預設的 Token 面板主題。``default`` 為預設介面；``ccm`` 可切換為 claude-monitor 原版介面。"""
 
 DEFAULT_TIME_FORMAT: str = "24h"
 """預設的時間顯示格式。``24h`` 為 24 小時制；``12h`` 為 12 小時制（上午/下午）。"""
+
+DEFAULT_LANG: str = "auto"
+"""預設的語系設定。``auto`` 會自動偵測系統語系；可用語系見 ``cli.py --lang`` 的 choices。"""
 
 
 # ==========================================================
@@ -106,6 +109,31 @@ TOOL_DISPLAY: dict[str, str] = {
     "WebFetch": "Fetching web",
     "TodoWrite": "Updating todos",
 }
+"""預設的工具名稱 → 顯示格式對應表（英文）。
+呼叫 :func:`get_tool_display` 可取得目前語系的版本。"""
+
+
+def get_tool_display() -> dict[str, str]:
+    """取得目前語系的工具顯示格式對應表。
+
+    Returns:
+        工具名稱 → 格式字串的字典。
+    """
+    from claude_code_dashboard.messages import Messages, get_messages
+
+    msg: Messages = get_messages(_current_lang)
+    return {
+        "Read": msg.tool_reading,
+        "Edit": msg.tool_editing,
+        "Write": msg.tool_writing,
+        "Bash": msg.tool_running,
+        "Grep": msg.tool_searching,
+        "Glob": msg.tool_searching,
+        "Task": msg.tool_sub_agent,
+        "WebSearch": msg.tool_browsing_web,
+        "WebFetch": msg.tool_fetching_web,
+        "TodoWrite": msg.tool_updating_todos,
+    }
 
 
 # ==========================================================
@@ -135,3 +163,40 @@ STATE_DISPLAY: dict[str, tuple[str, str]] = {
     STATE_WAITING_INPUT: ("💬 Input", "bright_magenta"),
     STATE_IDLE: ("💤 Idle", "dim"),
 }
+"""預設的狀態顯示對應表（英文）。
+呼叫 :func:`get_state_display` 可取得目前語系的版本。"""
+
+
+def get_state_display() -> dict[str, tuple[str, str]]:
+    """取得目前語系的狀態顯示對應表。
+
+    Returns:
+        狀態代碼 → ``(標籤文字, Rich 框線顏色)`` 的字典。
+    """
+    from claude_code_dashboard.messages import Messages, get_messages
+
+    msg: Messages = get_messages(_current_lang)
+    return {
+        STATE_WORKING: (f"✍  {msg.state_working}", "green"),
+        STATE_THINKING: (f"🧠 {msg.state_thinking}", "yellow"),
+        STATE_WAITING_PERMISSION: (f"⏳ {msg.state_permission}", "red"),
+        STATE_WAITING_INPUT: (f"💬 {msg.state_input}", "bright_magenta"),
+        STATE_IDLE: (f"💤 {msg.state_idle}", "dim"),
+    }
+
+
+# ==========================================================
+# 語系狀態（由 app.py 啟動時設定）
+# ==========================================================
+_current_lang: str = "auto"
+"""目前的語系設定。由 :func:`set_lang` 在啟動時設定。"""
+
+
+def set_lang(lang: str) -> None:
+    """設定目前語系。由 ``app.run()`` 在啟動時呼叫。
+
+    Args:
+        lang: 語系代碼（``"auto"`` 或 ``cli.py --lang`` 的 choices 之一）。
+    """
+    global _current_lang  # noqa: PLW0603
+    _current_lang = lang

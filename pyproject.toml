@@ -12,24 +12,31 @@ license = "MIT"
 authors = [
     { name = "linziyou0601", email = "qqq23939889@gmail.com" },
 ]
+keywords = ["claude", "claude-code", "dashboard", "terminal", "tui", "token-usage", "agent-status"]
 dependencies = [
     "claude-monitor>=3.1.0,<4",
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Environment :: Console",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Utilities",
+    "Development Status :: 4 - Beta",                     # 開發階段（3=Alpha, 4=Beta, 5=Stable）
+    "Environment :: Console",                             # 執行環境：終端機
+    "Intended Audience :: Developers",                    # 目標使用者：開發者
+    "License :: OSI Approved :: MIT License",             # 授權類型
+    "Programming Language :: Python :: 3",                # 支援 Python 3
+    "Programming Language :: Python :: 3.9",              # ┐
+    "Programming Language :: Python :: 3.10",             # │ 逐版列出支援的 Python 版本
+    "Programming Language :: Python :: 3.11",             # │
+    "Programming Language :: Python :: 3.12",             # │
+    "Programming Language :: Python :: 3.13",             # ┘
+    "Topic :: Utilities",                                 # 主題分類：工具類
+    "Topic :: Software Development :: User Interfaces",   # 主題分類：UI 開發
+    "Typing :: Typed",                                    # 提供型別標註
 ]
+
 [project.urls]
 Homepage = "https://github.com/linziyou0601/claude-code-dashboard"
 Repository = "https://github.com/linziyou0601/claude-code-dashboard"
+Issues = "https://github.com/linziyou0601/claude-code-dashboard/issues"
+Changelog = "https://github.com/linziyou0601/claude-code-dashboard/releases"
 
 [project.scripts]
 claude-dash = "claude_code_dashboard.cli:main"

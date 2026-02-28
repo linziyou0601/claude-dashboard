@@ -17,6 +17,7 @@ import sys
 from claude_code_dashboard import __version__
 from claude_code_dashboard.constants import (
     DEFAULT_IDLE_TIMEOUT_MIN,
+    DEFAULT_LANG,
     DEFAULT_PLAN,
     DEFAULT_REFRESH_S,
     DEFAULT_TIME_FORMAT,
@@ -96,6 +97,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=DEFAULT_TIME_FORMAT,
         choices=["12h", "24h"],
         help="時間顯示格式：24h=24 小時制，12h=12 小時制（上午/下午）（預設：%(default)s）",
+    )
+    p.add_argument(
+        "--lang",
+        default=DEFAULT_LANG,
+        choices=["auto", "en", "zh_TW", "zh_CN", "ja", "ko"],
+        help="介面語系：auto=自動偵測，en=English，zh_TW=繁體中文，zh_CN=简体中文，ja=日本語，ko=한국어（預設：%(default)s）",
     )
     return p.parse_args(argv)
 

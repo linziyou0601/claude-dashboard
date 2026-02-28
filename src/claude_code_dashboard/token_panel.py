@@ -26,6 +26,8 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+from claude_code_dashboard.messages import EN, Messages
+
 try:
     from zoneinfo import ZoneInfo
 except ImportError:
@@ -431,6 +433,7 @@ def _create_default_token_display(
     plan: str,
     user_tz: str,
     time_fmt: str,
+    msg: Messages = EN,
 ) -> RenderableType:
     """組裝預設主題的 Token 用量面板。
 
@@ -447,6 +450,7 @@ def _create_default_token_display(
         plan: Token 方案等級（``"pro"`` / ``"max5"`` / ``"max20"`` / ``"custom"``）。
         user_tz: IANA 時區名稱（例如 ``"Asia/Taipei"``）。
         time_fmt: 時間格式（``"24h"`` 或 ``"12h"``）。
+        msg: 多語系訊息實例。
 
     Returns:
         Rich Panel 物件，可直接傳入 ``live.update()``。
@@ -468,11 +472,14 @@ def _create_default_token_display(
         tot_t = data.get("total_tokens", 0)
         tot_c = data.get("total_cost", 0.0)
         body = Text()
-        body.append("No active session\n\n", style="dim italic")
-        body.append(f"Cumulative: {tot_t:,} tokens · ${tot_c:.2f}", style="dim")
+        body.append(f"{msg.token_panel_no_session}\n\n", style="dim italic")
+        body.append(
+            msg.token_panel_cumulative.format(tokens=f"{tot_t:,}", cost=f"{tot_c:.2f}"),
+            style="dim",
+        )
         return Panel(
             body,
-            title="[bold bright_blue]💎 Token Usage[/]",
+            title=f"[bold bright_blue]💎 {msg.token_panel_title}[/]",
             subtitle=subtitle,
             border_style="bright_blue",
         )
@@ -537,9 +544,9 @@ def _create_default_token_display(
 
     # 逐一建立標頭 + 進度條 + 空行（每組指標佔 3 行）
     for icon, label, ratio, cur, lim in [
-        ("💰", "Cost", cost_ratio, f"${total_cost:.2f}", f"${cost_limit:.2f}"),
-        ("📊", "Tokens", token_ratio, f"{total_tokens:,}", f"{token_limit:,}"),
-        ("📨", "Messages", msg_ratio, f"{sent_messages:,}", f"{message_limit:,}"),
+        ("💰", msg.token_cost, cost_ratio, f"${total_cost:.2f}", f"${cost_limit:.2f}"),
+        ("📊", msg.token_tokens, token_ratio, f"{total_tokens:,}", f"{token_limit:,}"),
+        ("📨", msg.token_messages, msg_ratio, f"{sent_messages:,}", f"{message_limit:,}"),
     ]:
         color = _severity_color(ratio)
         parts.append(_metric_header(icon, label, cur, lim, ratio))   # 第 1 行：標頭（label | value | %）
@@ -583,7 +590,7 @@ def _create_default_token_display(
                 color = _MODEL_COLORS.get(family, "#4a9eff")
                 segments.append((mt / total_m, color))
 
-            left_col.append(Text.from_markup("🤖 [bold]Models[/]"))       # 區塊標題
+            left_col.append(Text.from_markup(f"🤖 [bold]{msg.token_models}[/]"))  # 區塊標題
             left_col.append(_FullWidthStackedBar(segments))               # 堆疊色條（各模型比例）
             left_col.append(_model_labels(per_model, total_m))            # 色條下方的文字標籤
 
@@ -598,12 +605,12 @@ def _create_default_token_display(
             else "⚡"
         )
         rate_rows.append((
-            "🔥", "Burn Rate",
+            "🔥", msg.token_burn_rate,
             Text(f"{tokens_per_min:,.0f} tokens/min {velocity}", style="bright_yellow"),
         ))
     if cost_per_hour is not None:
         rate_rows.append((
-            "💲", "Cost Rate",
+            "💲", msg.token_cost_rate,
             Text(f"${cost_per_hour / 60:.4f} /min"),
         ))
 
@@ -632,7 +639,7 @@ def _create_default_token_display(
         hdr.add_column(ratio=1, no_wrap=True)            # 左欄：彈性填滿（flex: 1）
         hdr.add_column(justify="right", no_wrap=True)    # 右欄：靠右對齊
         hdr.add_row(
-            Text.from_markup("🕐 [bold]Reset In[/]"),
+            Text.from_markup(f"🕐 [bold]{msg.token_reset_in}[/]"),
             Text(f"{h}h {m:02d}m"),
         )
         right_col.append(hdr)                                       # Reset In 標頭列
@@ -653,19 +660,19 @@ def _create_default_token_display(
             exhaust_val.append(exhaust_str, style="red")
             if cost_will_exceed:
                 exhaust_val.append("  🚨", style="bold red")
-            pred_rows.append(("🔮", "Token exhaust", exhaust_val))
+            pred_rows.append(("🔮", msg.token_exhaust, exhaust_val))
 
         # 用量上限重置時間
         if has_reset:
             reset_str: str = _format_time(end_dt_resolved, tz_info, time_fmt)  # type: ignore[arg-type]
             pred_rows.append((
-                "⏰", "Limit resets",
+                "⏰", msg.token_limit_resets,
                 Text(reset_str, style="green"),
             ))
 
         if right_col:
             right_col.append(Text(""))  # 與上方 Reset In 區塊的間隔
-        right_col.append(Text.from_markup("🔮 [bold]Predictions[/]"))   # 區塊標題
+        right_col.append(Text.from_markup(f"[bold]{msg.token_predictions}[/]"))  # 區塊標題
         right_col.append(_kv_table(pred_rows))                          # 預測資訊表格
 
     # -- 組合格線 ------------------------------------------------
@@ -676,11 +683,11 @@ def _create_default_token_display(
     # -- 嚴重警告（已超限）----------------------------------------
     severe: list[str] = []
     if cost_limit and total_cost >= cost_limit:
-        severe.append("🚨  Cost limit exceeded!")
+        severe.append(f"🚨 {msg.token_cost_exceeded}")
     if token_limit and total_tokens >= token_limit:
-        severe.append("🚨  Token limit exceeded!")
+        severe.append(f"🚨 {msg.token_tokens_exceeded}")
     if message_limit and sent_messages >= message_limit:
-        severe.append("🚨  Message limit exceeded!")
+        severe.append(f"🚨 {msg.token_messages_exceeded}")
 
     if severe:
         parts.append(Text(""))  # 與上方內容的間隔
@@ -689,10 +696,10 @@ def _create_default_token_display(
 
     # 最外層 Panel：帶標題的邊框容器（類似 CSS border + title）
     return Panel(
-        Group(*parts),                                   # 垂直堆疊所有子元件
-        title="[bold bright_blue]💎 Token Usage[/]",     # 面板標題（上方居中）
-        subtitle=subtitle,                               # 面板副標題（下方居中）
-        border_style="bright_blue",                      # 邊框顏色
+        Group(*parts),                                              # 垂直堆疊所有子元件
+        title=f"[bold bright_blue]💎 {msg.token_panel_title}[/]",  # 面板標題（上方居中）
+        subtitle=subtitle,                                          # 面板副標題（下方居中）
+        border_style="bright_blue",                                 # 邊框顏色
     )
 
 
@@ -704,6 +711,7 @@ def create_token_display(
     timezone: str,
     theme: str = "default",
     time_format: str = "24h",
+    msg: Messages = EN,
 ) -> RenderableType:
     """建立 Token 用量顯示面板（本模組的唯一公開函式）。
 
@@ -717,6 +725,7 @@ def create_token_display(
         timezone: IANA 時區名稱（例如 ``"Asia/Taipei"``）。
         theme: 面板主題，``"default"`` 或 ``"ccm"``。
         time_format: 時間格式，``"24h"`` 或 ``"12h"``。
+        msg: 多語系訊息實例。
 
     Returns:
         Rich 可渲染物件（Panel 或 Text）。
@@ -738,7 +747,7 @@ def create_token_display(
 
     # 預設主題：使用本模組的預設面板
     if theme == "default":
-        return _create_default_token_display(data, plan, timezone, time_format)
+        return _create_default_token_display(data, plan, timezone, time_format, msg)
 
     # ccm 原版介面：委託 DisplayController 渲染（效果等同 `ccm --view realtime`）
     try:

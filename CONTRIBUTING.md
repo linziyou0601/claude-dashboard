@@ -41,15 +41,29 @@ uv run claude-dash --plan max5  # 直接執行
 ## 新增 Agent 狀態
 
 1. 在 `constants.py` 新增 `STATE_XXX` 常數與 `STATE_DISPLAY` 項目
-2. 在 `sprites.py` 新增對應的像素網格（2 幀）與 `SPRITE_FRAMES` 項目
-3. 在 `agent_parser.py` 的 `parse_agent_state()` 中新增判斷邏輯
+2. 在 `messages.py` 為所有語系新增對應的 `state_xxx` 欄位
+3. 在 `constants.py` 的 `get_state_display()` 中新增對應項目
+4. 在 `sprites.py` 新增對應的像素網格（2 幀）與 `SPRITE_FRAMES` 項目
+5. 在 `agent_parser.py` 的 `parse_agent_state()` 中新增判斷邏輯
 
 <br>
 
 ## 新增工具顯示格式
 
-在 `constants.py` 的 `TOOL_DISPLAY` 字典中新增項目，
-並在 `agent_parser.py` 的 `_format_tool_status()` 中新增對應的參數萃取邏輯。
+1. 在 `constants.py` 的 `TOOL_DISPLAY` 字典中新增項目
+2. 在 `messages.py` 為所有語系新增對應的 `tool_xxx` 欄位
+3. 在 `constants.py` 的 `get_tool_display()` 中新增對應項目
+4. 在 `agent_parser.py` 的 `_format_tool_status()` 中新增對應的參數萃取邏輯
+
+<br>
+
+## 新增語系
+
+1. 在 `messages.py` 新增 `Messages` 實例（如 `TH = Messages(...)`）
+2. 在 `messages.py` 的 `_REGISTRY` 字典中註冊新語系代碼
+3. 如有 locale 別名（如 `th_TH` → `th`），在 `_ALIASES` 中新增
+4. 在 `cli.py` 的 `--lang` choices 中新增語系代碼
+5. 更新 `README.md` 的語系說明
 
 <br>
 
@@ -108,20 +122,22 @@ Repository → Settings → **Rules** → Rulesets → New ruleset。
 
 1. 修改 `pyproject.toml` 中的 `version`（遵循 [Semantic Versioning](#版本號規則semantic-versioning)）
 2. Commit & Push 到 `main`
-3. 到 GitHub Actions 頁面 → "Publish to PyPI" → **Run workflow** → 選擇 `testpypi`
+3. 到 GitHub Actions 頁面 → "Publish to PyPI" → **Run workflow**
 4. 驗證安裝：
    ```bash
    pip install -i https://test.pypi.org/simple/ claude-code-dashboard==0.2.0
    ```
 
-### 正式發佈（PyPI）
+### 正式發佈（PyPI + GitHub Release）
 
 確認 TestPyPI 沒問題後，打 tag 觸發正式發佈：
 
 ```bash
 git tag v0.2.0
 git push origin v0.2.0
-# GitHub Actions 偵測到 v* tag 後自動發佈到 PyPI
+# GitHub Actions 偵測到 v* tag 後自動：
+#   1. 發佈到 PyPI
+#   2. 建立 GitHub Release（自動產生 release notes）
 ```
 
 > **注意**：CI 會驗證 tag 版號與 `pyproject.toml` 中的 `version` 是否一致，不一致時發佈會失敗。

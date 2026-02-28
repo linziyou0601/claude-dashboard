@@ -35,9 +35,10 @@ from claude_code_dashboard.constants import (
     AGENT_CARD_MIN_WIDTH,
     AGENT_CARD_MAX_WIDTH,
     RECENT_THRESHOLD_S,
-    STATE_DISPLAY,
     STATE_IDLE,
+    get_state_display,
 )
+from claude_code_dashboard.messages import EN, Messages
 from claude_code_dashboard.sprites import render_sprite
 
 
@@ -80,6 +81,7 @@ def create_agent_display(
     max_agents: int = 0,
     no_sprites: bool = False,
     console_width: int = 0,
+    msg: Messages = EN,
 ) -> RenderableType:
     """建立 Agent 面板，包含所有工作階段的精靈卡片。
 
@@ -103,8 +105,8 @@ def create_agent_display(
     """
     if not sessions:
         return Panel(
-            Text("  No active Claude sessions found", style="dim"),
-            title="[bold bright_blue]🤖 Agents[/]",
+            Text(f"  {msg.agent_no_sessions}", style="dim"),
+            title=f"[bold bright_blue]🤖 {msg.agent_panel_title}[/]",
             border_style="dim",
         )
 
@@ -166,11 +168,13 @@ def create_agent_display(
 
     # Columns 會將所有卡片水平排列，自動換行
     cols = Columns(cards, padding=(0, 0))
-    subtitle: str = f"{len(display_sessions)} sessions | {active_count} active"
+    subtitle: str = msg.agent_sessions_subtitle.format(
+        total=len(display_sessions), active=active_count,
+    )
 
     return Panel(
         cols,
-        title="[bold bright_blue]🤖 Active Agents[/]",
+        title=f"[bold bright_blue]🤖 {msg.agent_panel_title}[/]",
         subtitle=f"[dim]{subtitle}[/]",
         border_style="bright_blue",
     )
@@ -205,10 +209,10 @@ def _build_agent_card(
     Returns:
         Rich Panel 物件，寬度依據終端機寬度動態調整。
     """
-    # STATE_DISPLAY 字典取得狀態對應的標籤文字與顏色
+    # 取得目前語系的狀態顯示對應表
     label: str
     color: str
-    label, color = STATE_DISPLAY.get(state.state, ("?", "white"))
+    label, color = get_state_display().get(state.state, ("?", "white"))
     if is_dim:
         color = "dim"
 

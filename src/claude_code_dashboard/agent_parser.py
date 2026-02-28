@@ -38,8 +38,9 @@ from claude_code_dashboard.constants import (
     STATE_WAITING_INPUT,
     STATE_WAITING_PERMISSION,
     STATE_WORKING,
-    TOOL_DISPLAY,
+    get_tool_display,
 )
+from claude_code_dashboard.messages import get_messages
 
 
 # ==========================================================
@@ -231,19 +232,21 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
             model=model,
         )
 
+    msg = get_messages()
+
     if last_assistant_has_text:
         if time_since_update > INPUT_WAIT_TIMER_S:
             # 純文字回覆後超過 5 秒無新動作 → 等待使用者輸入
             return AgentState(
                 state=STATE_WAITING_INPUT,
-                status_text="Waiting for input",
+                status_text=msg.status_waiting_input,
                 last_update=mtime,
                 model=model,
             )
         # 純文字回覆剛完成 → 仍在回應中
         return AgentState(
             state=STATE_THINKING,
-            status_text="Responding...",
+            status_text=msg.status_responding,
             last_update=mtime,
             model=model,
         )
@@ -253,7 +256,7 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
         # 3 秒內有更新 → 可能正在思考（API 正在串流回應中）
         return AgentState(
             state=STATE_THINKING,
-            status_text="Thinking...",
+            status_text=msg.status_thinking,
             last_update=mtime,
             model=model,
         )
@@ -323,7 +326,7 @@ def _format_tool_status(tool_name: str, tool_input: dict) -> str:
     Returns:
         格式化後的狀態描述文字。
     """
-    template: str = TOOL_DISPLAY.get(tool_name, "")
+    template: str = get_tool_display().get(tool_name, "")
     if not template:
         return tool_name
 
@@ -367,10 +370,11 @@ def _format_age(seconds: float) -> str:
     Returns:
         格式化字串，例如 ``"30s ago"``、``"5m ago"``、``"2h ago"``。
     """
+    msg = get_messages()
     if seconds < 60:
-        return f"{int(seconds)}s ago"
+        return msg.time_seconds_ago.format(int(seconds))
     minutes: int = int(seconds / 60)
     if minutes < 60:
-        return f"{minutes}m ago"
+        return msg.time_minutes_ago.format(minutes)
     hours: int = int(minutes / 60)
-    return f"{hours}h ago"
+    return msg.time_hours_ago.format(hours)

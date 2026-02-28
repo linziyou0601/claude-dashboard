@@ -1,8 +1,8 @@
 # PyPI 發佈工作流程
 #
 # 觸發方式（二擇一）：
-#   A. 推送 v* tag → 自動發佈到 PyPI（正式版）
-#   B. 手動觸發 → 可選擇發佈到 TestPyPI 或 PyPI
+#   A. 推送 v* tag → 自動發佈到 PyPI + 建立 GitHub Release（正式版）
+#   B. 手動觸發 → 發佈到 TestPyPI（測試用）
 #
 # 使用前需設定 GitHub Secrets：
 #   - PYPI_API_TOKEN        : PyPI 的 API Token
@@ -12,9 +12,9 @@
 #   1. 修改 pyproject.toml 中的 version（例如 "0.2.0"）
 #   2. git commit -m "release: v0.2.0"
 #   3. git tag v0.2.0 && git push origin main --tags
-#   4. GitHub Actions 自動觸發發佈到 PyPI
+#   4. GitHub Actions 自動觸發：發佈到 PyPI + 建立 GitHub Release
 #
-# 測試發佈：到 Actions 頁面手動觸發，選擇 testpypi。
+# 測試發佈：到 Actions 頁面手動觸發（僅 TestPyPI）。
 
 name: Publish to PyPI
 
@@ -24,22 +24,13 @@ on:
       - "v*"
 
   workflow_dispatch:
-    inputs:
-      target:
-        description: "發佈目標"
-        required: true
-        type: choice
-        options:
-          - testpypi
-          - pypi
-        default: testpypi
 
 jobs:
   publish:
     name: Build & Publish
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     steps:
       - name: Checkout
@@ -83,28 +74,22 @@ jobs:
 
       # 手動觸發 → TestPyPI
       - name: Publish to TestPyPI (manual)
-        if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+        if: github.event_name == 'workflow_dispatch'
         run: uv publish --publish-url https://test.pypi.org/legacy/
         env:
           UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
-      # 手動觸發 → PyPI
-      - name: Publish to PyPI (manual)
-        if: github.event_name == 'workflow_dispatch' && inputs.target == 'pypi'
-        run: uv publish
+      # 建立 GitHub Release（僅 tag 觸發時）
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+        run: gh release create "${{ github.ref_name }}" --generate-notes
         env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Summary
         run: |
           V="${{ steps.version.outputs.version }}"
-          if [ "${{ github.event_name }}" = "push" ]; then
-            TARGET="pypi"
-          else
-            TARGET="${{ inputs.target }}"
-          fi
-
-          if [ "${TARGET}" = "testpypi" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "### ✅ Published v${V} to TestPyPI" >> $GITHUB_STEP_SUMMARY
             echo "" >> $GITHUB_STEP_SUMMARY
             echo "Install: \`pip install -i https://test.pypi.org/simple/ claude-code-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
