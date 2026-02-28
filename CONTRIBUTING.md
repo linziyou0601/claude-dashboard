@@ -118,37 +118,49 @@ Repository → Settings → **Rules** → Rulesets → New ruleset。
 
 ### 測試發佈（TestPyPI）
 
-先透過手動觸發 GitHub Actions 發到 TestPyPI 驗證：
+先透過手動觸發 GitHub Actions 發到 TestPyPI 驗證。**TestPyPI 必須使用 `rc` 後綴版號**，避免佔用正式版號（CI 會檢查）：
 
-1. 修改 `pyproject.toml` 中的 `version`（遵循 [Semantic Versioning](#版本號規則semantic-versioning)）
+1. 修改 `pyproject.toml` 中的 `version` 為 rc 版號（例如 `1.1.0rc1`）
 2. Commit & Push 到 `main`
-3. 到 GitHub Actions 頁面 → "Publish to PyPI" → **Run workflow**
-4. 驗證安裝：
    ```bash
-   pip install -i https://test.pypi.org/simple/ claude-code-dashboard==0.2.0
+   git commit -m "chore: bump version to 1.1.0rc1 for testing"
+   git push origin main
    ```
+3. 到 GitHub Actions 頁面 → "Publish to PyPI" → **Run workflow**
+4. 驗證安裝
+   ```bash
+   pip install -i https://test.pypi.org/simple/ claude-code-dashboard==1.1.0rc1
+   ```
+5. 若需修正後重測，遞增 rc 號：`rc1` → `rc2` → `rc3`...
 
 ### 正式發佈（PyPI + GitHub Release）
 
-確認 TestPyPI 沒問題後，打 tag 觸發正式發佈：
+確認 TestPyPI 沒問題後，移除 rc 後綴並打 tag 觸發正式發佈。**正式版號不可含 `rc` 後綴**（CI 會檢查）：
 
-```bash
-git tag v0.2.0
-git push origin v0.2.0
-# GitHub Actions 偵測到 v* tag 後自動：
-#   1. 發佈到 PyPI
-#   2. 建立 GitHub Release（自動產生 release notes）
-```
-
-> **注意**：CI 會驗證 tag 版號與 `pyproject.toml` 中的 `version` 是否一致，不一致時發佈會失敗。
-
+1. 修改 `pyproject.toml` 中的 `version` 為正式版號（例如 `1.1.0`）
+2. Commit & Push 到 `main`
+   ```bash
+   git commit -m "release: v1.1.0"
+   git push origin main
+   ```
+3. 打 tag 觸發 CI
+   ```bash
+   git tag v1.1.0
+   git push origin v1.1.0
+   ```
+4. GitHub Actions 偵測到 `v*` tag 後自動：
+   - 驗證 tag 版號與 `pyproject.toml` 一致
+   - 驗證版號不含預發佈後綴
+   - 發佈到 PyPI
+   - 建立 GitHub Release（自動產生 release notes）
 
 ### 版本號規則（Semantic Versioning）
 
 | 變更類型 | 版本號 | 範例 |
 |---|---|---|
-| Bug 修復、微調 | Patch `x.y.Z` | `0.1.0` → `0.1.1` |
-| 新功能、不影響既有 API | Minor `x.Y.0` | `0.1.1` → `0.2.0` |
-| 重大變更、不相容修改 | Major `X.0.0` | `0.9.0` → `1.0.0` |
+| Bug 修復、微調 | Patch `x.y.Z` | `1.0.0` → `1.0.1` |
+| 新功能、不影響既有 API | Minor `x.Y.0` | `1.0.1` → `1.1.0` |
+| 重大變更、不相容修改 | Major `X.0.0` | `1.9.0` → `2.0.0` |
+| TestPyPI 測試版 | RC `x.y.zrcN` | `1.1.0rc1` → `1.1.0rc2` → `1.1.0` |
 
-> **注意**：PyPI 不允許重新上傳相同版本號。發佈出錯時必須遞增版本號。
+> **注意**：PyPI / TestPyPI 不允許重新上傳相同版本號。測試用 `rc` 後綴，正式發佈移除後綴。

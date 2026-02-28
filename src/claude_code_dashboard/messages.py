@@ -466,16 +466,37 @@ def _resolve_locale(raw: str) -> str | None:
     return None
 
 
-def get_messages(lang: str = "auto") -> Messages:
+# ==========================================================
+# 語系狀態（由 app.py 啟動時設定）
+# ==========================================================
+_current_lang: str = "auto"
+"""目前的語系設定。由 :func:`set_lang` 在啟動時設定。"""
+
+
+def set_lang(lang: str) -> None:
+    """設定目前語系。由 ``app.run()`` 在啟動時呼叫。
+
+    設定後，所有 :func:`get_messages` 的無參數呼叫都會使用此語系。
+
+    Args:
+        lang: 語系代碼（``"auto"`` 或 ``cli.py --lang`` 的 choices 之一）。
+    """
+    global _current_lang  # noqa: PLW0603
+    _current_lang = lang
+
+
+def get_messages(lang: str | None = None) -> Messages:
     """取得指定語系的 Messages 實例。
 
     Args:
-        lang: 語系代碼（``"en"``、``"zh_TW"``、``"zh_CN"``、``"ja"``、``"ko"``）
-              或 ``"auto"``（自動偵測）。
+        lang: 語系代碼（``"en"``、``"zh_TW"``、``"zh_CN"``、``"ja"``、``"ko"``）。
+              若為 ``None``（預設），使用 :func:`set_lang` 設定的語系。
 
     Returns:
         對應語系的 :class:`Messages` 實例。無法辨識時回傳英文。
     """
+    if lang is None:
+        lang = _current_lang
     if lang == "auto":
         lang = detect_lang()
     # 支援直接傳入別名（例如 "zh"）

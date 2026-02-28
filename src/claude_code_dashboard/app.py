@@ -36,8 +36,8 @@ from rich.text import Text
 
 from claude_code_dashboard.agent_panel import create_agent_display
 from claude_code_dashboard.agent_scanner import SessionInfo, scan_sessions
-from claude_code_dashboard.constants import DISPLAY_REFRESH_HZ, SPRITE_FRAME_INTERVAL_S, set_lang
-from claude_code_dashboard.messages import Messages, get_messages
+from claude_code_dashboard.constants import DISPLAY_REFRESH_HZ, SPRITE_FRAME_INTERVAL_S
+from claude_code_dashboard.messages import Messages, get_messages, set_lang
 from claude_code_dashboard.token_panel import create_token_display
 
 
@@ -84,7 +84,7 @@ def run(args: argparse.Namespace) -> None:
     Raises:
         KeyboardInterrupt: 使用者按下 Ctrl+C 時結束迴圈（由 cli.main 攔截）。
     """
-    # 設定語系（供 constants.py 的 get_tool_display / get_state_display 使用）
+    # 設定語系（供所有 get_messages() 無參數呼叫使用）
     set_lang(args.lang)
     msg: Messages = get_messages(args.lang)
 

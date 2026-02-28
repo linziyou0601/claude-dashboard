@@ -123,7 +123,7 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     if age > IDLE_THRESHOLD_S:
         return AgentState(
             state=STATE_IDLE,
-            status_text=_format_age(age),
+            status_text=format_age(age),
             last_update=mtime,
         )
 
@@ -264,7 +264,7 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     # 以上皆非 → 閒置
     return AgentState(
         state=STATE_IDLE,
-        status_text=_format_age(time_since_update),
+        status_text=format_age(time_since_update),
         last_update=mtime,
         model=model,
     )
@@ -361,7 +361,7 @@ def _format_tool_status(tool_name: str, tool_input: dict) -> str:
     return template
 
 
-def _format_age(seconds: float) -> str:
+def format_age(seconds: float) -> str:
     """將秒數格式化為人類可讀的時間距離字串。
 
     Args:

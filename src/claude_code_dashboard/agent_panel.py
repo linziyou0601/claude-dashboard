@@ -27,7 +27,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from claude_code_dashboard.agent_parser import AgentState, parse_agent_state
+from claude_code_dashboard.agent_parser import AgentState, format_age, parse_agent_state
 from claude_code_dashboard.agent_scanner import SessionInfo
 from claude_code_dashboard.constants import (
     ACTIVE_THRESHOLD_S,
@@ -146,7 +146,7 @@ def create_agent_display(
         # 若工作階段已超過 10 分鐘未更新且非活躍，強制標為閒置
         if s.age_seconds > RECENT_THRESHOLD_S and not s.has_process:
             agent_state.state = STATE_IDLE
-            agent_state.status_text = f"{int(s.age_seconds / 60)}m ago"
+            agent_state.status_text = format_age(s.age_seconds)
 
         # 統計活躍數量（30 秒內有更新 或 有對應行程）
         if s.age_seconds < ACTIVE_THRESHOLD_S or s.has_process:

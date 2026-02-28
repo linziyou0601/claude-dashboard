@@ -119,9 +119,9 @@ def get_tool_display() -> dict[str, str]:
     Returns:
         工具名稱 → 格式字串的字典。
     """
-    from claude_code_dashboard.messages import Messages, get_messages
+    from claude_code_dashboard.messages import get_messages
 
-    msg: Messages = get_messages(_current_lang)
+    msg = get_messages()
     return {
         "Read": msg.tool_reading,
         "Edit": msg.tool_editing,
@@ -173,9 +173,9 @@ def get_state_display() -> dict[str, tuple[str, str]]:
     Returns:
         狀態代碼 → ``(標籤文字, Rich 框線顏色)`` 的字典。
     """
-    from claude_code_dashboard.messages import Messages, get_messages
+    from claude_code_dashboard.messages import get_messages
 
-    msg: Messages = get_messages(_current_lang)
+    msg = get_messages()
     return {
         STATE_WORKING: (f"✍  {msg.state_working}", "green"),
         STATE_THINKING: (f"🧠 {msg.state_thinking}", "yellow"),
@@ -184,19 +184,3 @@ def get_state_display() -> dict[str, tuple[str, str]]:
         STATE_IDLE: (f"💤 {msg.state_idle}", "dim"),
     }
 
-
-# ==========================================================
-# 語系狀態（由 app.py 啟動時設定）
-# ==========================================================
-_current_lang: str = "auto"
-"""目前的語系設定。由 :func:`set_lang` 在啟動時設定。"""
-
-
-def set_lang(lang: str) -> None:
-    """設定目前語系。由 ``app.run()`` 在啟動時呼叫。
-
-    Args:
-        lang: 語系代碼（``"auto"`` 或 ``cli.py --lang`` 的 choices 之一）。
-    """
-    global _current_lang  # noqa: PLW0603
-    _current_lang = lang
