@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "claude-dashboard"
+version = "0.1.0"
+description = "Terminal dashboard for Claude Code: token usage + agent status with pixel sprites"
+requires-python = ">=3.9"
+license = "MIT"
+authors = [
+    { name = "linziyou0601", email = "qqq23939889@gmail.com" },
+]
+dependencies = [
+    "claude-monitor>=3.1.0,<4",
+]
+
+[project.scripts]
+claude-dash = "claude_dashboard.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/claude_dashboard"]

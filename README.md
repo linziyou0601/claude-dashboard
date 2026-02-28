@@ -1,2 +1,256 @@
-# claude-dashboard
-Terminal dashboard for Claude Code: token usage + agent status with pixel sprites
+# Claude Dashboard
+
+> Claude Code 終端儀表板 — 即時監控 Token 用量與 Agent 工作狀態
+
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue)
+![License](https://img.shields.io/badge/License-MIT-green)
+
+<br>
+
+## 概覽
+
+Claude Dashboard 是一個終端介面（TUI）工具，整合兩大功能於同一畫面：
+
+1. **Token 用量面板** — 直接延用 [claude-monitor (ccm)](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor) 的即時用量介面，顯示費用、Token 消耗量、燃燒率、預測等
+2. **Agent 狀態面板** — 受 [Pixel Agents](https://github.com/pablodelucca/pixel-agents) 啟發，以像素精靈動畫顯示每個 Claude Code 工作階段的即時狀態
+
+![Claude Dashboard](./claude-dash-demo.gif)
+
+<br>
+
+## 功能特色
+
+- **即時刷新** — 畫面以 2 Hz 更新，資料依指定間隔掃描
+- **像素精靈動畫** — 5 種狀態各有兩幀動畫，使用 Unicode Braille 字元渲染（無需圖片協議支援）
+- **多工作階段偵測** — 同一專案可同時顯示多個 Agent（自動編號 #1, #2, ...）
+- **檔案式偵測** — 以 JSONL mtime 判斷工作階段存活，支援 macOS / Linux / Windows
+- **ccm 原生整合** — Token 面板直接呼叫 ccm 的 `DisplayController`，顯示效果完全一致
+- **跨終端相容** — 純 Unicode 文字輸出，VS Code 終端、iTerm2、Terminal.app 皆可使用
+
+<br>
+
+## 專案架構
+
+```
+claude-dashboard/
+├── pyproject.toml
+├── README.md
+├── LICENSE
+├── .gitignore
+└── src/
+    └── claude_dashboard/
+        ├── __init__.py
+        ├── __main__.py
+        ├── cli.py                    # CLI 引數解析（argparse）
+        ├── constants.py              # 全域常數（門檻值、預設值、顯示設定）
+        ├── app.py                    # 主迴圈（Rich Live 即時刷新）
+        ├── token_panel.py            # Token 面板（封裝 ccm DisplayController）
+        ├── agent_scanner.py          # 工作階段掃描（JSONL mtime 偵測）
+        ├── agent_parser.py           # JSONL 解析（推斷 Agent 狀態）
+        ├── agent_panel.py            # Agent 面板（精靈卡片渲染）
+        └── sprites.py                # 像素精靈定義與 Braille 渲染引擎
+```
+
+### 模組依賴關係
+
+```mermaid
+graph TD
+    CLI["cli.py<br/><i>CLI 引數解析</i>"] --> APP["app.py<br/><i>Rich Live 主迴圈</i>"]
+    APP --> TP["token_panel.py<br/><i>Token 面板</i>"]
+    APP --> AP["agent_panel.py<br/><i>Agent 面板</i>"]
+    TP --> CCM["claude_monitor<br/><i>外部套件</i>"]
+    AP --> PARSE["agent_parser.py<br/><i>JSONL 解析</i>"]
+    AP --> SCAN["agent_scanner.py<br/><i>工作階段掃描</i>"]
+    AP --> SPRITE["sprites.py<br/><i>Braille 渲染</i>"]
+    PARSE --> CONST["constants.py<br/><i>全域常數</i>"]
+    AP --> CONST
+    SCAN --> CONST
+
+    style CCM stroke:#999,stroke-dasharray: 5 5
+```
+
+### Agent 偵測流程
+
+```mermaid
+flowchart TD
+    A["掃描 ~/.claude/projects/\*/\*.jsonl"] --> B{"mtime 在時限內？"}
+    B -- 否 --> Z["跳過"]
+    B -- 是 --> C{"mtime < 30 秒？"}
+    C -- 是 --> D["✅ 視為存活"]
+    C -- 否 --> E["❌ 視為非活躍"]
+    D --> J["讀取 JSONL 尾端 32KB"]
+    E --> J
+    J --> K{"有 tool_use<br/>無 tool_result？"}
+    K -- 是 --> L{"非豁免工具<br/>且超過 7 秒？"}
+    L -- 是 --> M["⏳ 等待授權"]
+    L -- 否 --> N["✍ 工作中"]
+    K -- 否 --> O{"最後為純文字？"}
+    O -- 是 --> P{"超過 5 秒？"}
+    P -- 是 --> Q["💬 等待輸入"]
+    P -- 否 --> R["🧠 思考中"]
+    O -- 否 --> S["💤 閒置"]
+```
+
+### 各模組職責
+
+| 模組 | 職責 |
+|------|------|
+| `cli.py` | 定義 CLI 參數、進入點 |
+| `app.py` | Rich Live 主迴圈，組合所有面板 |
+| `token_panel.py` | 封裝 ccm 的 `DisplayController`，產生 Token 用量面板 |
+| `agent_scanner.py` | 掃描 `~/.claude/projects/` 的 JSONL 檔案，以 mtime 判斷存活 |
+| `agent_parser.py` | 讀取 JSONL 尾端 32KB，推斷工具使用狀態與 Agent 狀態 |
+| `agent_panel.py` | 將工作階段與狀態組合為 Rich Panel 卡片 |
+| `sprites.py` | 定義 14×12 像素網格，轉換為 Unicode Braille 字元 |
+| `constants.py` | 所有門檻值、計時器、顏色、預設值的集中管理 |
+
+<br>
+
+## 安裝方式
+
+### 前置需求
+
+- **macOS / Linux / Windows**（需先安裝 [Claude Code](https://code.claude.com/docs/en/setup)）
+- **Python 3.9+**
+- **[uv](https://docs.astral.sh/uv/)** — 新一代 Python 套件管理器（以 Rust 實作，速度極快）
+- **[claude-monitor](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor)** (ccm) — Token 用量追蹤（安裝時自動安裝）
+
+> **什麼是 uv？**
+>
+> [uv](https://docs.astral.sh/uv/) 是 Astral 開發的 Python 套件管理器，用來取代 `pip`、`venv`、`pipx` 等工具。
+> 它會自動管理虛擬環境與相依套件，安裝速度比 pip 快 10–100 倍。
+>
+> - `uv tool install <pkg>` — 將套件安裝為全域命令列工具（類似 `npm install -g`）
+> - `uv run <cmd>` — 在專案的虛擬環境中執行命令（類似 `npx`）
+> - `uv pip install <pkg>` — 傳統 pip 的加速替代方案
+>
+> 安裝 uv：`curl -LsSf https://astral.sh/uv/install.sh | sh`
+
+### 方法一：uv tool install（推薦）
+
+將 `claude-dashboard` 安裝為全域命令列工具，自動建立隔離的虛擬環境：
+
+```bash
+cd claude-dashboard
+uv tool install .
+```
+
+安裝完成後，在任何目錄都可直接執行：
+
+```bash
+claude-dash --plan max5
+```
+
+更新到最新版：
+
+```bash
+uv tool upgrade claude-dashboard
+```
+
+### 方法二：uv run（開發用途）
+
+不安裝，直接在專案目錄中執行。uv 會自動建立 `.venv` 並安裝相依套件：
+
+```bash
+cd claude-dashboard
+uv run claude-dash --plan max5
+```
+
+### 方法三：pip install（傳統方式）
+
+```bash
+cd claude-dashboard
+python -m venv .venv && source .venv/bin/activate
+pip install .
+claude-dash --plan max5
+```
+
+<br>
+
+## 使用方式
+
+### 基本使用
+
+```bash
+# 顯示所有面板（Token + Agent），使用 max5 方案
+claude-dash --plan max5
+
+# 僅顯示 Agent 面板
+claude-dash --view agents
+
+# 僅顯示 Token 面板
+claude-dash --view tokens
+```
+
+### CLI 參數一覽
+
+| 參數 | 預設值 | 說明 |
+|------|--------|------|
+| `--plan` | `max5` | Token 方案等級：`pro` / `max5` / `max20` / `custom` |
+| `--timezone` | `Asia/Taipei` | IANA 時區名稱 |
+| `--view` | `all` | 顯示面板：`all` / `tokens` / `agents` |
+| `--refresh` | `10` | 資料刷新間隔（秒） |
+| `--idle-timeout` | `10` | 隱藏閒置超過 N 分鐘的 Agent |
+| `--max-agents` | `0` | 最多顯示的 Agent 卡片數量（0=不限） |
+| `--show-all` | `false` | 顯示 30 分鐘內的所有工作階段 |
+| `--no-sprites` | `false` | 停用像素精靈，改用純文字模式 |
+| `--version` | — | 顯示版本號 |
+
+### 使用範例
+
+```bash
+# 快速刷新，顯示所有工作階段
+claude-dash --plan max5 --refresh 5 --show-all
+
+# 純文字模式（適合螢幕閱讀器或低解析度終端）
+claude-dash --view agents --no-sprites
+
+# 僅顯示最多 4 個 Agent
+claude-dash --max-agents 4
+
+# 使用不同時區
+claude-dash --timezone America/New_York
+```
+
+<br>
+
+## 運作原理
+
+### Token 面板
+
+直接匯入 ccm 的 `DisplayController.create_data_display()` 方法，該方法回傳一個 Rich `Group` 可渲染物件。這表示 Token 面板的顯示效果與 `ccm --view realtime` **完全相同**，無需重新實作任何邏輯。
+
+### 像素精靈渲染
+
+使用 **Unicode Braille 字元**（U+2800–U+28FF）實現終端機中的「像素級」繪圖：
+
+- 每個 Braille 字元編碼 2×4 的點陣矩陣（8 個像素點）
+- 比一般方塊字元精細 **8 倍**
+- 14×12 像素的精靈網格渲染為 7 字元寬 × 3 行高
+- 每個 2×4 區塊以「多數決」選出代表顏色
+- 支援 7 種顏色（膚色、頭髮、上衣、褲子、強調色、家具、特效）
+- 每種狀態有 2 幀動畫，以 0.5 秒間隔交替
+
+> **為什麼不用 Sixel / Kitty 圖片協議？**
+> 因為 VS Code 內建終端不支援任何圖片協議。Braille 字元是純 Unicode 文字，在所有終端都能正確顯示。
+
+<br>
+
+## 開發與發佈
+
+詳見 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+<br>
+
+## 致謝
+
+本專案的靈感與技術基礎來自以下開源專案：
+
+- **[claude-monitor (ccm)](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor)** — Token 用量面板直接呼叫 ccm 的 API，感謝 Maciej 提供優秀的 Token 追蹤工具（MIT License）
+- **[Pixel Agents](https://github.com/pablodelucca/pixel-agents)** — Agent 狀態偵測的啟發式邏輯與像素精靈概念源自此 VS Code 擴充套件，感謝 Pablo De Lucca 的創意（MIT License）
+
+<br>
+
+## 授權條款
+
+本專案採用 [MIT License](LICENSE) 授權。

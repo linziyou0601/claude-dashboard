@@ -1,0 +1,115 @@
+# PyPI 發佈工作流程
+#
+# 觸發方式（二擇一）：
+#   A. 推送 v* tag → 自動發佈到 PyPI（正式版）
+#   B. 手動觸發 → 可選擇發佈到 TestPyPI 或 PyPI
+#
+# 使用前需設定 GitHub Secrets：
+#   - PYPI_API_TOKEN        : PyPI 的 API Token
+#   - TEST_PYPI_API_TOKEN   : TestPyPI 的 API Token
+#
+# 發版流程：
+#   1. 修改 pyproject.toml 中的 version（例如 "0.2.0"）
+#   2. git commit -m "release: v0.2.0"
+#   3. git tag v0.2.0 && git push origin main --tags
+#   4. GitHub Actions 自動觸發發佈到 PyPI
+#
+# 測試發佈：到 Actions 頁面手動觸發，選擇 testpypi。
+
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - "v*"
+
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "發佈目標"
+        required: true
+        type: choice
+        options:
+          - testpypi
+          - pypi
+        default: testpypi
+
+jobs:
+  publish:
+    name: Build & Publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      # 取得版本號供後續步驟使用
+      - name: Get version
+        id: version
+        run: |
+          VERSION=$(grep '^version' pyproject.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      # 驗證 tag 版號與 pyproject.toml 一致（僅 tag 觸發時檢查）
+      - name: Verify tag matches version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          TOML="${{ steps.version.outputs.version }}"
+          if [ "${TAG}" != "${TOML}" ]; then
+            echo "::error::Tag v${TAG} does not match pyproject.toml version ${TOML}"
+            echo "Please ensure the tag matches: git tag v${TOML}"
+            exit 1
+          fi
+          echo "Version check passed: v${TAG} == ${TOML}"
+
+      - name: Build package
+        run: uv build
+
+      # Tag 觸發 → 發佈到 PyPI
+      - name: Publish to PyPI (tag)
+        if: startsWith(github.ref, 'refs/tags/v') && github.event_name == 'push'
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      # 手動觸發 → TestPyPI
+      - name: Publish to TestPyPI (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.target == 'testpypi'
+        run: uv publish --publish-url https://test.pypi.org/legacy/
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.TEST_PYPI_API_TOKEN }}
+
+      # 手動觸發 → PyPI
+      - name: Publish to PyPI (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.target == 'pypi'
+        run: uv publish
+        env:
+          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+
+      - name: Summary
+        run: |
+          V="${{ steps.version.outputs.version }}"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            TARGET="pypi"
+          else
+            TARGET="${{ inputs.target }}"
+          fi
+
+          if [ "${TARGET}" = "testpypi" ]; then
+            echo "### ✅ Published v${V} to TestPyPI" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Install: \`pip install -i https://test.pypi.org/simple/ claude-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ✅ Published v${V} to PyPI" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Install: \`pip install claude-dashboard==${V}\`" >> $GITHUB_STEP_SUMMARY
+          fi
