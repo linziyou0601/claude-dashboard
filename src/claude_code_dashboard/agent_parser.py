@@ -1,24 +1,21 @@
 """JSONL 紀錄檔解析模組 — 推斷 Agent 目前狀態。
 
-讀取 JSONL 紀錄檔的尾端（最後 32KB），分析最近的訊息紀錄以推斷：
+讀取 JSONL 紀錄檔的尾端，分析最近的訊息紀錄以推斷：
 
 - 目前正在使用什麼工具（Read、Edit、Bash 等）
 - Agent 處於哪種狀態（工作中、思考中、等待授權、等待輸入、閒置）
 
 判斷邏輯（依優先順序）：
 
-1. 有尚未回傳結果的工具呼叫 → **工作中**（或等待授權）
-2. 最後一則助手訊息為純文字 → **思考中**（或等待輸入）
-3. 以上皆非 → **閒置**
+1. 有尚未回傳結果的工具呼叫 → **工作中**
+   - 非豁免工具且逾時無結果，且無 progress 事件 → **等待授權**
+2. 偵測到 ``turn_duration`` 系統事件 → **等待輸入**（回合已明確結束）
+3. 最後一則 Agent 訊息為純文字且逾時 → **等待輸入**（備援判斷）
+4. 最後一則 Agent 訊息為純文字但尚未逾時 → **思考中**
+5. 以上皆非且近期有檔案更新 → **思考中**
+6. 以上皆非 → **閒置**
 
-核心套件說明：
-
-- **dataclasses.dataclass**: Python 3.7+ 的裝飾器，自動產生 ``__init__``、
-  ``__repr__``、``__eq__`` 等方法。欄位以類別變數語法宣告，
-  支援型別標註與預設值，大幅減少樣板程式碼。
-- **pathlib.Path**: Python 3.4+ 的物件導向路徑操作 API，
-  比 ``os.path`` 更直覺。``Path.stat()`` 取得檔案資訊、
-  ``Path.name`` 取得檔名、``Path.stem`` 取得不含副檔名的檔名。
+相關門檻值定義於 ``constants.py``（``PERMISSION_TIMER_S``、``INPUT_WAIT_TIMER_S`` 等）。
 """
 
 from __future__ import annotations
@@ -72,11 +69,21 @@ class AgentState:
 # 常數
 # ==========================================================
 # 不需要使用者授權的工具（自動核准），這些工具在 Claude Code 中
-# 被標記為安全工具，執行時不會彈出確認視窗
-_EXEMPT_TOOLS: set[str] = {"Read", "Glob", "Grep", "TodoWrite", "WebSearch", "WebFetch"}
+# 被標記為安全工具，執行時不會彈出確認視窗。
+# Agent / Task 工具為子代理，執行時間可能很長，不應被誤判為等待授權。
+# AskUserQuestion 會等待使用者回答，但不算「等待授權」。
+_EXEMPT_TOOLS: set[str] = {
+    "Read", "Glob", "Grep", "TodoWrite", "WebSearch", "WebFetch",
+    "Agent", "Task", "AskUserQuestion",
+}
 
-# 從 JSONL 尾端讀取的位元組數。
-# 32KB 通常足以涵蓋最近 5~10 則訊息，避免載入整個可能數 MB 的紀錄檔
+# 代表工具仍在執行中的 progress 事件子類型。
+# 收到這些事件表示工具確實在跑（例如長時間的 Bash 指令），
+# 不應判定為等待授權。
+_PROGRESS_SUBTYPES: set[str] = {"bash_progress", "mcp_progress", "agent_progress"}
+
+# 從 JSONL 尾端讀取的位元組數，通常足以涵蓋最近數則訊息，
+# 避免載入整個可能數 MB 的紀錄檔。
 _TAIL_BYTES: int = 32768
 
 
@@ -88,12 +95,13 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
 
     演算法概要：
 
-    1. 讀取 JSONL 檔案最後 32KB 的內容（使用 ``file.seek()`` 跳到尾端）
+    1. 讀取 JSONL 檔案尾端的內容（使用 ``file.seek()`` 跳到尾端）
     2. 從最新到最舊逐行解析 JSON 物件（``reversed(lines)``）
-    3. 記錄所有「已完成」的工具呼叫（user 訊息中的 ``tool_result``）
-    4. 記錄所有「進行中」的工具呼叫（assistant 訊息中的 ``tool_use``
+    3. 偵測 ``system`` 類型事件（回合結束信號與工具執行進度信號）
+    4. 記錄所有「已完成」的工具呼叫（user 訊息中的 ``tool_result``）
+    5. 記錄所有「進行中」的工具呼叫（assistant 訊息中的 ``tool_use``
        且 ID 不在已完成集合中）
-    5. 根據進行中工具、純文字回覆、更新時間等條件判斷狀態
+    6. 根據進行中工具、系統事件、純文字回覆、更新時間判斷狀態
 
     .. note::
         JSONL 格式為每行一筆獨立的 JSON 物件（不是 JSON 陣列）。
@@ -101,6 +109,8 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
 
             {"type": "user",      "message": {"content": [...]}}
             {"type": "assistant", "message": {"content": [...], "model": "..."}}
+            {"type": "system",    "subtype": "turn_duration", ...}
+            {"type": "system",    "subtype": "bash_progress", ...}
 
         ``content`` 陣列中的每個元素可能是 ``{"type": "text", "text": "..."}``
         或 ``{"type": "tool_use", "id": "...", "name": "Read", "input": {...}}``。
@@ -137,10 +147,12 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     # ----------------------------------------------------------
     active_tool_ids: set[str] = set()      # 進行中（尚無結果）的工具呼叫 ID
     completed_tool_ids: set[str] = set()   # 已回傳結果的工具呼叫 ID
-    last_assistant_has_text: bool = False   # 最後一則助手訊息是否包含純文字
+    last_assistant_has_text: bool = False  # 最後一則Agent訊息是否包含純文字
     last_tool_name: str = ""               # 最後一個進行中工具的名稱
     last_tool_status: str = ""             # 最後一個進行中工具的狀態描述
     model: str = ""                        # 從 JSONL 萃取的模型名稱
+    has_turn_duration: bool = False        # 是否偵測到 turn_duration（回合結束信號）
+    has_progress: bool = False             # 是否偵測到 progress 事件（工具仍在執行）
 
     for line in reversed(lines):
         try:
@@ -151,8 +163,21 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
 
         msg_type: str = obj.get("type", "")
 
+        # -- system 類型訊息 → 檢查 turn_duration 與 progress 事件 --------
+        if msg_type == "system":
+            subtype: str = obj.get("subtype", "")
+            if subtype == "turn_duration":
+                # turn_duration 是 Claude Code 在每個回合結束時寫入的事件，
+                # 代表Agent已完成本輪回覆，等待使用者下一步操作。
+                # 這是最可靠的「回合結束」信號。
+                has_turn_duration = True
+            elif subtype in _PROGRESS_SUBTYPES:
+                # progress 事件表示工具仍在執行中（例如長時間的 Bash 指令、
+                # MCP 呼叫、子代理任務），不應判定為等待授權。
+                has_progress = True
+
         # -- user 類型訊息 → 檢查是否有 tool_result（代表工具已完成） ----------------
-        if msg_type == "user":
+        elif msg_type == "user":
             message: dict = obj.get("message", {})
             content = message.get("content", [])
             if isinstance(content, list):
@@ -212,10 +237,17 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     now: float = time.time()
     time_since_update: float = now - mtime
 
+    msg = get_messages()
+
+    # -- 情境 1：有進行中的工具呼叫 --------------------------------
     if active_tool_ids:
-        # 有進行中的工具呼叫
-        if last_tool_name not in _EXEMPT_TOOLS and time_since_update > PERMISSION_TIMER_S:
-            # 非豁免工具且超過 7 秒無結果 → 可能在等待使用者授權
+        if (
+            last_tool_name not in _EXEMPT_TOOLS
+            and not has_progress
+            and time_since_update > PERMISSION_TIMER_S
+        ):
+            # 非豁免工具、沒有 progress 事件、且逾時無結果
+            # → 可能在等待使用者授權
             return AgentState(
                 state=STATE_WAITING_PERMISSION,
                 tool_name=last_tool_name,
@@ -232,11 +264,19 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
             model=model,
         )
 
-    msg = get_messages()
+    # -- 情境 2：偵測到 turn_duration → 回合已明確結束 ----------------
+    if has_turn_duration:
+        return AgentState(
+            state=STATE_WAITING_INPUT,
+            status_text=msg.status_waiting_input,
+            last_update=mtime,
+            model=model,
+        )
 
+    # -- 情境 3：最後一則Agent訊息為純文字 ----------------------------
     if last_assistant_has_text:
         if time_since_update > INPUT_WAIT_TIMER_S:
-            # 純文字回覆後超過 5 秒無新動作 → 等待使用者輸入
+            # 純文字回覆後逾時無新動作（備援判斷）→ 等待使用者輸入
             return AgentState(
                 state=STATE_WAITING_INPUT,
                 status_text=msg.status_waiting_input,
@@ -251,9 +291,9 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
             model=model,
         )
 
-    # 沒有進行中工具、沒有純文字回覆
-    if time_since_update < 3:
-        # 3 秒內有更新 → 可能正在思考（API 正在串流回應中）
+    # -- 情境 4：沒有進行中工具、沒有純文字回覆 ----------------------
+    if time_since_update < 3:  # noqa: PLR2004
+        # 近期有更新 → 可能正在思考（API 正在串流回應中）
         return AgentState(
             state=STATE_THINKING,
             status_text=msg.status_thinking,

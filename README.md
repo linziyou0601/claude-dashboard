@@ -52,22 +52,22 @@ claude-code-dashboard/
 ### 模組依賴關係
 
 ```mermaid
-graph TD
+graph LR
     CLI["cli.py<br/><i>CLI 引數解析</i>"] --> APP["app.py<br/><i>Rich Live 主迴圈</i>"]
-    APP --> TP["token_panel.py<br/><i>Token 面板</i>"]
     APP --> AP["agent_panel.py<br/><i>Agent 面板</i>"]
-    TP --> CCM["claude_monitor<br/><i>外部套件</i>"]
-    AP --> PARSE["agent_parser.py<br/><i>JSONL 解析</i>"]
-    AP --> SCAN["agent_scanner.py<br/><i>工作階段掃描</i>"]
+    APP --> TP["token_panel.py<br/><i>Token 面板</i>"]
     AP --> SPRITE["sprites.py<br/><i>Braille 渲染</i>"]
-    PARSE --> CONST["constants.py<br/><i>全域常數</i>"]
+    AP --> SCAN["agent_scanner.py<br/><i>工作階段掃描</i>"]
+    AP --> PARSE["agent_parser.py<br/><i>JSONL 解析</i>"]
+    SCAN --> CONST["constants.py<br/><i>全域常數</i>"]
+    PARSE --> CONST
     AP --> CONST
-    SCAN --> CONST
-    APP --> MSG["messages.py<br/><i>多語系訊息</i>"]
-    TP --> MSG
-    AP --> MSG
+    TP --> CCM["claude_monitor<br/><i>外部套件</i>"]
+    CONST --> MSG["messages.py<br/><i>多語系訊息</i>"]
     PARSE --> MSG
-    CONST --> MSG
+    AP --> MSG
+    APP --> MSG
+    TP --> MSG
 
     style CCM stroke:#999,stroke-dasharray: 5 5
 ```
@@ -83,15 +83,15 @@ flowchart TD
     C -- 否 --> E["❌ 視為非活躍"]
     D --> J["讀取 JSONL 尾端 32KB"]
     E --> J
-    J --> K{"有 tool_use<br/>無 tool_result？"}
-    K -- 是 --> L{"非豁免工具<br/>且超過 7 秒？"}
+    J --> K{"有進行中的<br/>工具呼叫？"}
+    K -- 是 --> L{"判定為<br/>等待授權？"}
     L -- 是 --> M["⏳ 等待授權"]
     L -- 否 --> N["✍ 工作中"]
-    K -- 否 --> O{"最後為純文字？"}
-    O -- 是 --> P{"超過 5 秒？"}
-    P -- 是 --> Q["💬 等待輸入"]
-    P -- 否 --> R["🧠 思考中"]
-    O -- 否 --> S["💤 閒置"]
+    K -- 否 --> O{"回合已結束？"}
+    O -- 是 --> Q["💬 等待輸入"]
+    O -- 否 --> P{"仍在回應中？"}
+    P -- 是 --> R["🧠 思考中"]
+    P -- 否 --> S["💤 閒置"]
 ```
 
 ### 各模組職責
@@ -102,7 +102,7 @@ flowchart TD
 | `app.py` | Rich Live 主迴圈，組合所有面板 |
 | `token_panel.py` | Token 用量面板（預設主題：預設進度條 + 雙欄佈局；ccm 主題：原版介面） |
 | `agent_scanner.py` | 掃描 `~/.claude/projects/` 的 JSONL 檔案，以 mtime 判斷存活 |
-| `agent_parser.py` | 讀取 JSONL 尾端 32KB，推斷工具使用狀態與 Agent 狀態 |
+| `agent_parser.py` | 讀取 JSONL 尾端，結合系統事件與計時器推斷 Agent 狀態 |
 | `agent_panel.py` | 將工作階段與狀態組合為 Rich Panel 卡片 |
 | `sprites.py` | 定義 14×12 像素網格，轉換為 Unicode Braille 字元 |
 | `constants.py` | 所有門檻值、計時器、顏色、預設值的集中管理 |
@@ -291,7 +291,7 @@ claude-dash --lang ja
 本專案的靈感與技術基礎來自以下開源專案：
 
 - **[claude-monitor (ccm)](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor)** — Token 用量面板直接呼叫 ccm 的 API，感謝 Maciej 提供優秀的 Token 追蹤工具（MIT License）
-- **[Pixel Agents](https://github.com/pablodelucca/pixel-agents)** — Agent 狀態偵測的啟發式邏輯與像素精靈概念源自此 VS Code 擴充套件，感謝 Pablo De Lucca 的創意（MIT License）
+- **[Pixel Agents](https://github.com/pablodelucca/pixel-agents)** — Agent 狀態偵測邏輯與像素精靈概念源自此 VS Code 擴充套件，感謝 Pablo De Lucca 的創意（MIT License）
 
 <br>
 

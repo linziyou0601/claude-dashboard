@@ -46,6 +46,19 @@ uv run claude-dash --plan max5  # 直接執行
 4. 在 `sprites.py` 新增對應的像素網格（2 幀）與 `SPRITE_FRAMES` 項目
 5. 在 `agent_parser.py` 的 `parse_agent_state()` 中新增判斷邏輯
 
+### 狀態判斷機制說明
+
+`agent_parser.py` 結合 JSONL 中的系統事件、豁免工具清單、以及計時器來推斷 Agent 狀態。判斷邏輯與優先順序請參閱 `agent_parser.py` 模組的 docstring。
+
+若需調整判斷行為，涉及的檔案如下：
+
+| 要調整的項目 | 檔案 | 位置 |
+|---|---|---|
+| 計時器門檻值 | `constants.py` | `PERMISSION_TIMER_S`、`INPUT_WAIT_TIMER_S` |
+| 豁免工具清單 | `agent_parser.py` | `_EXEMPT_TOOLS` |
+| 系統事件子類型 | `agent_parser.py` | `_PROGRESS_SUBTYPES` |
+| 狀態判斷流程 | `agent_parser.py` | `parse_agent_state()` |
+
 <br>
 
 ## 新增工具顯示格式
@@ -107,6 +120,58 @@ Repository → Settings → **Rules** → Rulesets → New ruleset。
   - **Block force pushes**
 
 > `workflow_dispatch`（手動觸發 Actions）預設僅 write 權限以上的人可操作，無需額外設定。
+
+<br>
+
+## Release Notes 格式規範
+
+### 可用 Section 與使用時機
+
+| Section | 使用時機 |
+|---|---|
+| `### Breaking Changes` | CLI 參數改名／移除、行為不相容變更（需要使用者主動調整） |
+| `### Features` | 全新功能 |
+| `### Improvements` | 現有功能的精準度、效能、體驗提升 |
+| `### Bug Fixes` | 明確的 regression 或錯誤修正 |
+| `### Dependencies` | 相依套件更新（影響使用者時才列） |
+| `### Contributors` | 有外部貢獻者的版本才加；純自己維護的版本省略 |
+
+> 只列本版本有的 section，沒有就省略，不要留空標題。
+
+### 寫法慣例
+
+- 從 `###` 開始（GitHub Release 標題由平台自動產生，release body 不需要 `#` / `##`）
+- Feature / Improvement 用 **粗體** 標記功能名稱，再接說明
+- Bug fix 用 indented sub-bullets 補充 root cause 與 fix（若原因不明顯）
+- 功能子項目用 plain bullet，不用 `####`
+
+### 範本
+
+```markdown
+### Breaking Changes
+
+- `--old-flag` has been removed; use `--new-flag` instead
+
+### Features
+
+**Feature Name**
+- What it does
+- Key detail
+
+### Improvements
+
+- **Existing Feature** — what improved and why it matters
+
+### Bug Fixes
+
+- Fixed `--flag` doing X instead of Y
+  - **Root cause:** ...
+  - **Fix:** ...
+
+### Contributors
+
+- [@username](https://github.com/username) — brief description
+```
 
 <br>
 

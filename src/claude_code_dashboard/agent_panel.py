@@ -105,7 +105,7 @@ def create_agent_display(
     """
     if not sessions:
         return Panel(
-            Text(f"  {msg.agent_no_sessions}", style="dim"),
+            Text(f"{msg.agent_no_sessions}", style="dim"),
             title=f"[bold bright_blue]🤖 {msg.agent_panel_title}[/]",
             border_style="dim",
         )
@@ -136,7 +136,7 @@ def create_agent_display(
         # 同一專案有多個工作階段時才加上編號
         needs_number: bool = project_counts[s.project_name] > 1
 
-        # 解析 JSONL 紀錄檔取得 Agent 狀態（讀取檔案尾端 32KB）
+        # 解析 JSONL 紀錄檔取得 Agent 狀態
         agent_state: AgentState = parse_agent_state(s.jsonl_path)
 
         # 掃描器無模型資訊時，從 JSONL 解析結果補充
