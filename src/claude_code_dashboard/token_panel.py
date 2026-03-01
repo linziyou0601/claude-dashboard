@@ -491,11 +491,7 @@ def _create_default_token_display(
     per_model: dict = active.get("perModelStats") or {}
 
     burn: dict = active.get("burnRate") or {}
-    tokens_per_min: float | None = burn.get("tokensPerMinute")
     cost_per_hour: float | None = burn.get("costPerHour")
-
-    proj: dict = active.get("projection") or {}
-    remaining_min: float | None = proj.get("remainingMinutes")
 
     # -- 時區與重置時間 ------------------------------------------
     try:
@@ -512,7 +508,6 @@ def _create_default_token_display(
 
     start_s: str | None = active.get("startTime")
     end_s: str | None = active.get("endTime")
-
     if start_s:
         try:
             sdt = datetime.fromisoformat(start_s)
@@ -521,7 +516,6 @@ def _create_default_token_display(
             start_dt_resolved = sdt
         except Exception:
             pass
-
     if end_s:
         try:
             edt = datetime.fromisoformat(end_s)
@@ -531,6 +525,24 @@ def _create_default_token_display(
             end_dt_resolved = edt
         except Exception:
             pass
+
+    # 燃燒率：優先使用過去 1 小時的平滑值（參考 CCM 相同公式），無資料時 Fallback 至 block 平均值
+    from claude_monitor.core.calculations import calculate_hourly_burn_rate
+    _hourly_tpm: float = calculate_hourly_burn_rate(blocks, now)
+    tokens_per_min: float | None = _hourly_tpm if _hourly_tpm > 0 else burn.get("tokensPerMinute")
+
+    # 耗盡時間：參考 CCM 相同公式（total_cost / elapsed_minutes）計算費用燃燒率
+    # 只在重置前耗盡才顯示
+    exhaust_min: float | None = None
+    _elapsed_min: float | None = (
+        (now - start_dt_resolved).total_seconds() / 60
+        if start_dt_resolved is not None else None
+    )
+    if _elapsed_min and _elapsed_min > 0 and total_cost > 0 and cost_limit and total_cost < cost_limit:
+        _cost_per_min: float = total_cost / _elapsed_min
+        _mins_to_exhaust: float = (cost_limit - total_cost) / _cost_per_min
+        if reset_remain is None or _mins_to_exhaust < reset_remain:
+            exhaust_min = _mins_to_exhaust
 
     # ==========================================================
     # 上半部：使用量指標（標頭 + 全寬進度條）
@@ -639,14 +651,14 @@ def _create_default_token_display(
         hdr.add_column(ratio=1, no_wrap=True)            # 左欄：彈性填滿（flex: 1）
         hdr.add_column(justify="right", no_wrap=True)    # 右欄：靠右對齊
         hdr.add_row(
-            Text.from_markup(f"🕐 [bold]{msg.token_reset_in}[/]"),
+            Text.from_markup(f"⌛ [bold]{msg.token_reset_in}[/]"),
             Text(f"{h}h {m:02d}m"),
         )
         right_col.append(hdr)                                       # Reset In 標頭列
         right_col.append(_FullWidthBar(reset_ratio, reset_color))   # 已用時間進度條
 
     # Predictions 區塊：Token exhaust 預估時間 + Limit resets 時間
-    has_exhaust: bool = remaining_min is not None and remaining_min > 0
+    has_exhaust: bool = exhaust_min is not None and exhaust_min > 0
     has_reset: bool = end_dt_resolved is not None
 
     if has_exhaust or has_reset:
@@ -654,7 +666,7 @@ def _create_default_token_display(
 
         # Token 耗盡預估時間
         if has_exhaust:
-            exhaust_dt = now + timedelta(minutes=remaining_min)  # type: ignore[arg-type]
+            exhaust_dt = now + timedelta(minutes=exhaust_min)  # type: ignore[arg-type]
             exhaust_str: str = _format_time(exhaust_dt, tz_info, time_fmt)
             exhaust_val = Text()
             exhaust_val.append(exhaust_str, style="red")
@@ -666,7 +678,7 @@ def _create_default_token_display(
         if has_reset:
             reset_str: str = _format_time(end_dt_resolved, tz_info, time_fmt)  # type: ignore[arg-type]
             pred_rows.append((
-                "⏰", msg.token_limit_resets,
+                "🕐", msg.token_limit_resets,
                 Text(reset_str, style="green"),
             ))
 

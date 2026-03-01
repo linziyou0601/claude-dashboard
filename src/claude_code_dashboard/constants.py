@@ -44,7 +44,7 @@ PERMISSION_TIMER_S: float = 7.0
 
 INPUT_WAIT_TIMER_S: float = 10.0
 """最後一則訊息為純文字回覆後，若超過此秒數無新動作，
-視為正在等待使用者輸入（備援判斷）。
+視為正在等待使用者輸入（Fallback 判斷）。
 若有偵測到 turn_duration 事件則不受此計時器限制，直接判定為等待輸入。"""
 
 

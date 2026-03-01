@@ -10,7 +10,7 @@
 1. 有尚未回傳結果的工具呼叫 → **工作中**
    - 非豁免工具且逾時無結果，且無 progress 事件 → **等待授權**
 2. 偵測到 ``turn_duration`` 系統事件 → **等待輸入**（回合已明確結束）
-3. 最後一則 Agent 訊息為純文字且逾時 → **等待輸入**（備援判斷）
+3. 最後一則 Agent 訊息為純文字且逾時 → **等待輸入**（Fallback 判斷）
 4. 最後一則 Agent 訊息為純文字但尚未逾時 → **思考中**
 5. 以上皆非且近期有檔案更新 → **思考中**
 6. 以上皆非 → **閒置**
@@ -276,7 +276,7 @@ def parse_agent_state(jsonl_path: Path) -> AgentState:
     # -- 情境 3：最後一則Agent訊息為純文字 ----------------------------
     if last_assistant_has_text:
         if time_since_update > INPUT_WAIT_TIMER_S:
-            # 純文字回覆後逾時無新動作（備援判斷）→ 等待使用者輸入
+            # 純文字回覆後逾時無新動作（Fallback 判斷）→ 等待使用者輸入
             return AgentState(
                 state=STATE_WAITING_INPUT,
                 status_text=msg.status_waiting_input,
