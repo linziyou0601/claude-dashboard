@@ -1,8 +1,8 @@
 # Claude Code Dashboard
 
-[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge)](https://www.python.org/)
-[![PyPI](https://img.shields.io/pypi/v/claude-code-dashboard?style=for-the-badge)](https://pypi.org/project/claude-code-dashboard/)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&style=flat-square)](https://www.python.org/)
+[![PyPI](https://img.shields.io/pypi/v/claude-code-dashboard?logo=pypi&style=flat-square)](https://pypi.org/project/claude-code-dashboard/)
+[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
 
 Claude Code Dashboard 是一個終端介面（TUI）工具，整合兩大功能於同一畫面：
 
