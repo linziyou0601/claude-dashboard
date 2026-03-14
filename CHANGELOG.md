@@ -133,6 +133,7 @@ This project builds on the following open-source work:
 - **[claude-monitor (ccm)](https://github.com/Maciek-roboblog/Claude-Code-Usage-Monitor)** — the token usage panel calls ccm's API directly (MIT License)
 - **[Pixel Agents](https://github.com/pablodelucca/pixel-agents)** — inspiration for agent state detection logic and pixel sprite concept (MIT License)
 
+[1.1.0]: https://github.com/linziyou0601/claude-code-dashboard/releases/tag/v1.1.0
 [1.0.3]: https://github.com/linziyou0601/claude-code-dashboard/releases/tag/v1.0.3
 [1.0.2]: https://github.com/linziyou0601/claude-code-dashboard/releases/tag/v1.0.2
 [1.0.1]: https://github.com/linziyou0601/claude-code-dashboard/releases/tag/v1.0.1
