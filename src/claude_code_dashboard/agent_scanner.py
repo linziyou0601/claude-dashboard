@@ -3,18 +3,23 @@
 偵測策略：
 
 1. 掃描 ``~/.claude/projects/`` 底下所有專案目錄中的 JSONL 檔案
-2. 依據檔案修改時間（mtime）過濾出近期活躍的檔案
-3. 以 mtime 新近程度判斷工作階段是否存活
-4. 每個符合條件的 JSONL 檔案代表一個 Agent 工作階段
+2. 掃描 ``~/.claude/projects/<project>/<sessionUUID>/subagents/`` 底下的 subagent JSONL 檔案
+3. 依據檔案修改時間（mtime）過濾出近期活躍的檔案
+4. 以 mtime 新近程度判斷工作階段是否存活
+5. 每個符合條件的 JSONL 檔案代表一個 Agent 工作階段
 
 .. note::
     Claude Code 的工作階段紀錄檔格式為 JSONL（每行一筆 JSON），
     檔名即為工作階段的 UUID。同一個專案目錄下可能同時存在多個
     工作階段（例如同時開啟多個 Claude Code 終端）。
+
+    Subagent 的 JSONL 位於 ``<sessionUUID>/subagents/agent-<id>.jsonl``，
+    對應的 ``.meta.json`` 紀錄了 agentType（例如 ``"Explore"``、``"Plan"``）。
 """
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -44,6 +49,11 @@ class SessionInfo:
     has_process: bool
     model: str = ""
     age_seconds: float = 0.0
+    parent_session_id: str = ""
+    """父工作階段 ID（subagent 才有值，頂層工作階段為空字串）。"""
+    agent_type: str = ""
+    """Subagent 類型，來自 ``.meta.json`` 的 ``agentType`` 欄位（例如 ``"Explore"``）。
+    頂層工作階段為空字串。"""
 
 
 def scan_sessions(
@@ -73,6 +83,7 @@ def scan_sessions(
 
         project_name: str = _extract_project_name(project_dir.name)
 
+        # -- 頂層工作階段：直接位於專案目錄下的 JSONL 檔 --------------------
         for jsonl_file in project_dir.glob("*.jsonl"):
             # 跳過壓縮/內部檔案（compact 是 Claude 自動產生的壓縮紀錄）
             if "compact" in jsonl_file.name:
@@ -103,9 +114,67 @@ def scan_sessions(
                 age_seconds=age,
             ))
 
+        # -- Subagent 工作階段：位於 <sessionUUID>/subagents/ 目錄下 --------
+        for session_subdir in project_dir.iterdir():
+            if not session_subdir.is_dir():
+                continue
+            subagents_dir: Path = session_subdir / "subagents"
+            if not subagents_dir.is_dir():
+                continue
+
+            parent_session_id: str = session_subdir.name
+
+            for jsonl_file in subagents_dir.glob("agent-*.jsonl"):
+                if "compact" in jsonl_file.name:
+                    continue
+
+                try:
+                    mtime = jsonl_file.stat().st_mtime
+                except OSError:
+                    continue
+
+                age = now - mtime
+                if age > cutoff:
+                    continue
+
+                session_id = jsonl_file.stem
+                has_process = age < ACTIVE_THRESHOLD_S
+                agent_type: str = _read_agent_type(
+                    subagents_dir / f"{session_id}.meta.json",
+                )
+
+                candidates.append(SessionInfo(
+                    jsonl_path=jsonl_file,
+                    session_id=session_id,
+                    project_dir=project_dir.name,
+                    project_name=project_name,
+                    mtime=mtime,
+                    has_process=has_process,
+                    age_seconds=age,
+                    parent_session_id=parent_session_id,
+                    agent_type=agent_type,
+                ))
+
     # 依修改時間由新到舊排序
     candidates.sort(key=lambda s: s.mtime, reverse=True)
     return candidates
+
+
+def _read_agent_type(meta_path: Path) -> str:
+    """讀取 subagent 的 ``.meta.json`` 並回傳 agentType 字串。
+
+    Args:
+        meta_path: ``.meta.json`` 檔案路徑。
+
+    Returns:
+        agentType 字串（例如 ``"Explore"``、``"Plan"``），
+        若檔案不存在或格式有誤則回傳空字串。
+    """
+    try:
+        with open(meta_path, encoding="utf-8") as f:
+            return json.load(f).get("agentType", "")
+    except (OSError, json.JSONDecodeError, ValueError):
+        return ""
 
 
 def _extract_project_name(dir_name: str) -> str:

@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.1.0] - 2026-03-14
+
+### Features
+
+- **Sub-agent detection** — sessions launched as sub-agents (via the `Agent` tool) are now detected and displayed as individual cards alongside top-level sessions
+  - Scans `~/.claude/projects/<project>/<sessionUUID>/subagents/agent-*.jsonl` in addition to top-level JSONL files
+  - Reads the corresponding `.meta.json` to retrieve the agent type (e.g., `Explore`, `Plan`, `general-purpose`)
+  - Agent type is shown in the card alongside the model name (e.g., `sonnet · Explore`)
+
 ## [1.0.3] - 2026-03-01
 
 ### Bug Fixes

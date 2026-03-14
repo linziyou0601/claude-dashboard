@@ -118,23 +118,47 @@ def create_agent_display(
     cards: list[Panel] = []
     active_count: int = 0
 
-    # -- 統計每個專案的工作階段數量 -----------------------------------------
-    # 用於判斷是否需要為同專案的多個工作階段加上編號（#1, #2, ...）
-    project_counts: dict[str, int] = {}
-    for s in display_sessions:
-        project_counts[s.project_name] = project_counts.get(s.project_name, 0) + 1
-
     # -- 計算卡片寬度 ------------------------------------------------
     effective_width: int = console_width if console_width > 0 else 80
     card_width: int = _calc_card_width(len(display_sessions), effective_width)
 
+    # -- 兩階段編號：先對頂層 session 編號，再推算 subagent 的父編號 -------
+    # 階段 1：統計並編號頂層 session（parent_session_id 為空的 session）
+    top_level = [s for s in display_sessions if not s.parent_session_id]
+    top_counts: dict[str, int] = {}
+    for s in top_level:
+        top_counts[s.project_name] = top_counts.get(s.project_name, 0) + 1
+
+    session_id_to_idx: dict[str, int] = {}  # session_id → 頂層編號
+    top_project_idx: dict[str, int] = {}
+    for s in top_level:
+        idx: int = top_project_idx.get(s.project_name, 0) + 1
+        top_project_idx[s.project_name] = idx
+        session_id_to_idx[s.session_id] = idx
+
+    # 階段 2：預先計算每個父 session 底下的 subagent 子編號
+    parent_sub_idx: dict[str, int] = {}  # parent_session_id → 目前子編號
+
+    # -- 預先計算每個 session 的顯示名稱 ----------------------------------
+    def _make_display_name(s: SessionInfo) -> str:
+        if not s.parent_session_id:
+            # 頂層：同專案有多個才加 #N
+            idx = session_id_to_idx.get(s.session_id, 1)
+            if top_counts.get(s.project_name, 1) > 1:
+                return f"{s.project_name} #{idx}"
+            return s.project_name
+        else:
+            # Subagent：顯示 #parent-subN（父不在顯示清單時用 ↳subN）
+            sub_num: int = parent_sub_idx.get(s.parent_session_id, 0) + 1
+            parent_sub_idx[s.parent_session_id] = sub_num
+            parent_idx: int = session_id_to_idx.get(s.parent_session_id, 0)
+            if parent_idx > 0:
+                return f"{s.project_name} #{parent_idx}-sub{sub_num}"
+            return f"{s.project_name} ↳sub{sub_num}"
+
     # -- 逐一建立卡片 ------------------------------------------------
-    project_indices: dict[str, int] = {}  # 追蹤每個專案目前的流水編號
     for s in display_sessions:
-        idx: int = project_indices.get(s.project_name, 0) + 1
-        project_indices[s.project_name] = idx
-        # 同一專案有多個工作階段時才加上編號
-        needs_number: bool = project_counts[s.project_name] > 1
+        display_name: str = _make_display_name(s)
 
         # 解析 JSONL 紀錄檔取得 Agent 狀態
         agent_state: AgentState = parse_agent_state(s.jsonl_path)
@@ -159,7 +183,7 @@ def create_agent_display(
             session=s,
             state=agent_state,
             frame=frame,
-            index=idx if needs_number else 0,
+            display_name=display_name,
             is_dim=is_dim,
             no_sprites=no_sprites,
             card_width=card_width,
@@ -184,7 +208,7 @@ def _build_agent_card(
     session: SessionInfo,
     state: AgentState,
     frame: int,
-    index: int,
+    display_name: str,
     is_dim: bool,
     no_sprites: bool,
     card_width: int = 36,
@@ -201,7 +225,7 @@ def _build_agent_card(
         session: 工作階段資訊（包含專案名稱、模型等）。
         state: Agent 目前狀態（由 agent_parser 解析而得）。
         frame: 動畫畫格計數器。
-        index: 同專案工作階段的編號（0 表示不顯示編號）。
+        display_name: 卡片標題名稱（例如 ``"commons #1"``、``"commons #1-sub2"``）。
         is_dim: 是否將卡片整體變暗顯示（用於非活躍工作階段）。
         no_sprites: 是否停用像素精靈。
         card_width: 卡片寬度（字元數），由 :func:`_calc_card_width` 動態計算。
@@ -216,10 +240,7 @@ def _build_agent_card(
     if is_dim:
         color = "dim"
 
-    # -- 組裝專案名稱 ------------------------------------------------
-    name: str = session.project_name
-    if index > 0:
-        name += f" #{index}"  # 同專案多個工作階段時加上編號
+    name: str = display_name
 
     # -- 截斷狀態文字 ------------------------------------------------
     # 右欄可用寬度 = 卡片寬度 - 精靈欄 - 邊框 - 留白
@@ -241,9 +262,14 @@ def _build_agent_card(
         if status:
             info.append("\n")
             info.append(status, style="dim")
+        meta_parts: list[str] = []
         if session.model:
+            meta_parts.append(session.model)
+        if session.agent_type:
+            meta_parts.append(session.agent_type)
+        if meta_parts:
             info.append("\n")
-            info.append(session.model, style="dim italic")
+            info.append(" · ".join(meta_parts), style="dim italic")
 
         # 使用 Rich Table 實現左右並排排版（無框線、無標頭的隱形表格）
         # Table.add_column() 定義欄位寬度
@@ -276,9 +302,14 @@ def _build_agent_card(
         if status:
             content.append("\n ")
             content.append(status, style="dim")
+        meta_parts = []
         if session.model:
+            meta_parts.append(session.model)
+        if session.agent_type:
+            meta_parts.append(session.agent_type)
+        if meta_parts:
             content.append("\n ")
-            content.append(session.model, style="dim italic")
+            content.append(" · ".join(meta_parts), style="dim italic")
 
         return Panel(
             content,
